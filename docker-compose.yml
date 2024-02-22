@@ -1,0 +1,36 @@
+version: '3.4'
+services:
+#  manager:
+#     build:
+#      context: .
+#      dockerfile: ./docker/Dockerfile
+#    image:  todo
+#    command:
+#    env_file: .env
+#    ports:
+#      - 8080:8080
+#    depends_on:
+#      - queue
+
+  queue:
+    image: "redis:7.2-alpine"
+    env_file: .env
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - queue:/data
+    command:
+      - /bin/sh
+      - -c
+      - |
+        redis-server --requirepass "$${REDIS_PASSWORD:?REDIS_PASSWORD variable is not set}" 
+        --port "$${REDIS_PORT:?REDIS_PORT variable is not set}" 
+        /usr/local/etc/redis/redis.conf"
+
+volumes:
+  queue:
+
+networks:
+  app-network:
+    driver: bridge
