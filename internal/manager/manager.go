@@ -36,38 +36,6 @@ func (m *Manager) Run(config config.API) {
 	}(router)
 }
 
-func getTasksHandler(w http.ResponseWriter, r *http.Request) {
-	//TODO: get tasks
-	resp := []base.Task{
-		{Status: base.TaskStatusPending},
-	}
-	writeSuccessResponse(w, resp)
-}
-
-func getTaskHandler(w http.ResponseWriter, r *http.Request) {
-	//TODO: get task
-	resp := base.Task{
-		Status: base.TaskStatusPending,
-	}
-	writeSuccessResponse(w, resp)
-}
-
-func postTaskHandler(w http.ResponseWriter, r *http.Request) {
-	//TODO: add task
-	resp := base.Task{
-		Status: base.TaskStatusPending,
-	}
-	writeSuccessResponse(w, resp)
-}
-
-func putTaskHandler(w http.ResponseWriter, r *http.Request) {
-	//TODO: add task
-	resp := base.Task{
-		Status: base.TaskStatusPending,
-	}
-	writeSuccessResponse(w, resp)
-}
-
 func writeSuccessResponse(w http.ResponseWriter, data interface{}) {
 	resp := base.Response{
 		Data:  data,

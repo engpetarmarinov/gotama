@@ -29,8 +29,12 @@ func (r *Router) RegisterRoutes() http.Handler {
 		mw.WithLogging(mw.WithCommonHeaders(mw.WithAuth(mw.WithRBAC(postTaskHandler)))))
 
 	r.mux.HandleFunc(
-		"POST /api/v1/tasks/{id}",
+		"PUT /api/v1/tasks/{id}",
 		mw.WithLogging(mw.WithCommonHeaders(mw.WithAuth(mw.WithRBAC(putTaskHandler)))))
+
+	r.mux.HandleFunc(
+		"DELETE /api/v1/tasks/{id}",
+		mw.WithLogging(mw.WithCommonHeaders(mw.WithAuth(mw.WithRBAC(deleteTaskHandler)))))
 
 	return r.mux
 }
