@@ -43,8 +43,8 @@ func writeSuccessResponse(w http.ResponseWriter, data interface{}) {
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		slog.Error("Error when trying to write success base.Response", "error", err.Error())
-		writeErrorResponse(w, base.ResponseErrorCodeInternalError, "Internal Error Occurred")
+		slog.Error("error when trying to write success base.Response", "error", err.Error())
+		writeErrorResponse(w, base.ResponseErrorCodeInternalError, "error when trying to write success base.Response")
 	}
 }
 
@@ -56,7 +56,8 @@ func writeErrorResponse(w http.ResponseWriter, code int, msg string) {
 		},
 	}
 
+	w.WriteHeader(code)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		slog.Error("Error when trying to write error base.Response", "error", err.Error())
+		slog.Error("error when trying to write error base.Response", "error", err.Error())
 	}
 }
