@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/engpetarmarinov/gotama/internal/base"
@@ -12,27 +13,41 @@ import (
 
 type API interface {
 	Run()
+	Shutdown()
 }
 
 type Manager struct {
+	ctx    context.Context
+	server *http.Server
+	broker base.Broker
 }
 
-func NewManager() *Manager {
-	return &Manager{}
+func NewManager(broker base.Broker) *Manager {
+	return &Manager{
+		ctx:    context.Background(),
+		broker: broker,
+	}
+}
+func (m *Manager) Shutdown() error {
+	if err := m.server.Shutdown(m.ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *Manager) Run(config config.API) {
-	router := NewRouter().RegisterRoutes()
+	router := NewRouter().RegisterRoutes(m.broker)
 	go func(mux http.Handler) {
 		server := http.Server{
 			Addr:    fmt.Sprintf(":%s", config.Get("MANAGER_PORT")),
 			Handler: mux,
 		}
+
+		m.server = &server
 		slog.Info("Listening on", "address", server.Addr)
 		if err := server.ListenAndServe(); err != nil {
 			log.Fatal(err)
 		}
-
 	}(router)
 }
 

@@ -18,7 +18,7 @@ TODO
 Prerequisites
 * docker and docker-compose
 
-Start the manager service, the queue (redis) and the workers
+Start the manager service, the broker (redis) and the workers
 ```bash
 docker-compose up -d
 ```

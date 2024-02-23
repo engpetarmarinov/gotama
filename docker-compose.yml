@@ -12,7 +12,7 @@ services:
 #    depends_on:
 #      - queue
 
-  queue:
+  broker:
     image: "redis:7.2-alpine"
     env_file: .env
     ports:
@@ -20,7 +20,7 @@ services:
       - "6379:6379"
     volumes:
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
-      - queue:/data
+      - broker:/data
     command:
       - /bin/sh
       - -c
@@ -30,7 +30,7 @@ services:
         /usr/local/etc/redis/redis.conf"
 
 volumes:
-  queue:
+  broker:
 
 networks:
   app-network:

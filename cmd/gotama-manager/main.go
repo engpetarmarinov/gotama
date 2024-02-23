@@ -1,8 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/manager"
+	"github.com/engpetarmarinov/gotama/internal/rdb"
+	"github.com/redis/go-redis/v9"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,11 +14,32 @@ import (
 
 func main() {
 	cfg := config.NewConfig()
-	manager.NewManager().Run(cfg)
+	rco := rdb.RedisClientOpt{
+		Addr:     fmt.Sprintf("%s:%s", cfg.Get("REDIS_ADDR"), cfg.Get("REDIS_PORT")),
+		Password: cfg.Get("REDIS_PASSWORD"),
+	}
+
+	client, ok := rco.MakeRedisClient().(redis.UniversalClient)
+	if !ok {
+		panic("panic casting to redis client")
+	}
+
+	broker := rdb.NewRDB(client)
+	mgr := manager.NewManager(broker)
+	mgr.Run(cfg)
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGTERM, syscall.SIGINT)
 
 	<-shutdown
-	//TODO: graceful shutdown
+	slog.Info("graceful shutdown...")
+	err := broker.Close()
+	if err != nil {
+		slog.Error("error closing broker", "error", err)
+	}
+
+	err = mgr.Shutdown()
+	if err != nil {
+		slog.Error("error shutting down broker", "error", err)
+	}
 }
