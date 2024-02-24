@@ -97,7 +97,7 @@ const (
 // getAllTasksCmd fetches all tasks with an offset and limit.
 //
 // Input:
-// KEYS[1] -> gotama:{<qname>}:t:*
+// KEYS[1] -> gotama:<qname>:t:*
 // --
 // ARGV[1] -> offset
 // ARGV[2] -> limit
@@ -187,8 +187,8 @@ func (r *RDB) GetTask(ctx context.Context, taskID string) (*task.Message, error)
 // enqueueTaskCmd enqueues a given task message.
 //
 // Input:
-// KEYS[1] -> gotama:{<qname>}:t:<task_id>
-// KEYS[2] -> gotama:{<qname>}:pending
+// KEYS[1] -> gotama:<qname>:t:<task_id>
+// KEYS[2] -> gotama:<qname>:pending
 // --
 // ARGV[1] -> task message data
 // ARGV[2] -> task ID
@@ -241,8 +241,8 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 // updateTaskCmd enqueues a given task message.
 //
 // Input:
-// KEYS[1] -> gotama:{<qname>}:t:<task_id>
-// KEYS[2] -> gotama:{<qname>}:pending
+// KEYS[1] -> gotama:<qname>:t:<task_id>
+// KEYS[2] -> gotama:<qname>:pending
 // --
 // ARGV[1] -> task message data
 // ARGV[2] -> task ID
@@ -259,7 +259,7 @@ redis.call("HSET", KEYS[1],
            "msg", ARGV[1],
            "state", "pending",
            "pending_since", ARGV[3])
-redis.call("LREM", KEYS[2], -1, ARGV[2])
+redis.call("LREM", KEYS[2], 0, ARGV[2])
 redis.call("LPUSH", KEYS[2], ARGV[2])
 return 1
 `)
@@ -288,4 +288,35 @@ func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
 		return errors.New("task id does not exist")
 	}
 	return nil
+}
+
+// KEYS[1] -> gotama:<qname>:t:<task_id>
+// KEYS[2] -> gotama:<qname>:pending
+// KEYS[3] -> gotama:<qname>:scheduled
+// KEYS[4] -> gotama:<qname>:retry
+// -------
+// ARGV[1] -> task ID
+var removeCmd = redis.NewScript(`
+redis.call("LREM", KEYS[2], 0, ARGV[1])
+redis.call("LREM", KEYS[3], 0, ARGV[1])
+redis.call("LREM", KEYS[4], 0, ARGV[1])
+if redis.call("DEL", KEYS[1]) == 0 then
+  return redis.error_reply("NOT FOUND")
+end
+return redis.status_reply("OK")
+`)
+
+func (r *RDB) RemoveTask(ctx context.Context, taskID string) error {
+	keys := []string{
+		TaskKey(task.QueueDefault, taskID),
+		PendingKey(task.QueueDefault),
+		ScheduledKey(task.QueueDefault),
+		RetryKey(task.QueueDefault),
+	}
+
+	argv := []interface{}{
+		taskID,
+	}
+
+	return r.runScript(ctx, removeCmd, keys, argv...)
 }
