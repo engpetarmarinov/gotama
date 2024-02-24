@@ -125,8 +125,60 @@ func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 
 func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//TODO: update task
-		resp := task.Response{}
+		taskID := strings.ToLower(strings.TrimSpace(r.PathValue("id")))
+		if taskID == "" {
+			writeErrorResponse(w, http.StatusBadRequest, "no task id provided")
+			return
+		}
+
+		existingTaskMsg, err := broker.GetTask(context.Background(), taskID)
+		if err != nil {
+			slog.Warn(err.Error())
+			writeErrorResponse(w, http.StatusNotFound, "error getting msg")
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			slog.Warn(err.Error())
+			writeErrorResponse(w, http.StatusBadRequest, "error reading body")
+			return
+		}
+
+		var taskReq task.Request
+		err = json.Unmarshal(body, &taskReq)
+		if err != nil {
+			slog.Warn(err.Error())
+			writeErrorResponse(w, http.StatusBadRequest, "error unmarshalling req")
+			return
+		}
+
+		newTaskMsg, err := task.NewMessageFromRequest(&taskReq)
+		if err != nil {
+			slog.Warn(err.Error())
+			writeErrorResponse(w, http.StatusBadRequest, "error getting task msg")
+			return
+		}
+
+		existingTaskMsg.Name = newTaskMsg.Name
+		existingTaskMsg.Type = newTaskMsg.Type
+		existingTaskMsg.Period = newTaskMsg.Period
+		existingTaskMsg.Payload = newTaskMsg.Payload
+
+		err = broker.UpdateTask(context.Background(), existingTaskMsg)
+		if err != nil {
+			slog.Error(err.Error())
+			writeErrorResponse(w, http.StatusInternalServerError, "error updating task")
+			return
+		}
+
+		resp, err := task.NewResponseFromMessage(existingTaskMsg)
+		if err != nil {
+			slog.Warn(err.Error())
+			writeErrorResponse(w, http.StatusInternalServerError, "error getting task response")
+			return
+		}
+
 		writeSuccessResponse(w, resp)
 	}
 }

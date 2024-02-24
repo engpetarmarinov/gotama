@@ -28,4 +28,46 @@ export $(grep -v '^#' local.env | xargs)
 go run cmd/gotama-manager/main.go&
 go run cmd/gotama-worker/main.go&
 ```
-TODO
+## RESTful API
+Add a task
+```bash
+curl --location 'http://localhost:8080/api/v1/tasks' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "name": "email",
+    "type": "recurring",
+    "period": "5s",
+    "payload": {
+        "to": "eng.petar.marinov@gmail.com",
+        "title": "Reminder",
+        "body": "Take a break!"
+    }
+}'
+```
+Get a task
+```bash
+curl --location 'http://localhost:8080/api/v1/tasks/11ef259c-8523-42e4-8568-9d167dbba9da'
+```
+Get a list of tasks
+```bash
+curl --location 'http://localhost:8080/api/v1/tasks?limit=100&offset=0'
+```
+Update a task
+```bash
+curl --location --request PUT 'http://localhost:8080/api/v1/tasks/11ef259c-8523-42e4-8568-9d167dbba9da' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "name": "email",
+    "type": "recurring",
+    "period": "5s",
+    "payload": {
+        "to": "eng.petar.marinov@gmail.com",
+        "title": "Reminder",
+        "body": "Take a break!"
+    }
+}'
+```
+Delete a task
+```bash
+curl --location --request DELETE 'http://localhost:8080/api/v1/tasks/11ef259c-8523-42e4-8568-9d167dbba9da'
+```

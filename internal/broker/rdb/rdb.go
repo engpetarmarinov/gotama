@@ -237,3 +237,55 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 	}
 	return nil
 }
+
+// updateTaskCmd enqueues a given task message.
+//
+// Input:
+// KEYS[1] -> gotama:{<qname>}:t:<task_id>
+// KEYS[2] -> gotama:{<qname>}:pending
+// --
+// ARGV[1] -> task message data
+// ARGV[2] -> task ID
+// ARGV[3] -> current unix time in nano sec
+//
+// Output:
+// Returns 1 if successfully enqueued
+// Returns 0 if task ID already exists
+var updateTaskCmd = redis.NewScript(`
+if redis.call("EXISTS", KEYS[1]) == 0 then
+	return 0
+end
+redis.call("HSET", KEYS[1],
+           "msg", ARGV[1],
+           "state", "pending",
+           "pending_since", ARGV[3])
+redis.call("LREM", KEYS[2], -1, ARGV[2])
+redis.call("LPUSH", KEYS[2], ARGV[2])
+return 1
+`)
+
+// UpdateTask adds the given task to the pending list of the queue.
+func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
+	encoded, err := task.EncodeMessage(msg)
+	if err != nil {
+		return errors.New(fmt.Sprintf("cannot encode message: %v", err))
+	}
+	keys := []string{
+		TaskKey(msg.Queue, msg.ID),
+		PendingKey(msg.Queue),
+	}
+	argv := []interface{}{
+		encoded,
+		msg.ID,
+		r.clock.Now().UnixNano(),
+	}
+	slog.Info("Updating task", "id", keys[0], "queue", keys[1])
+	n, err := r.runScriptWithErrorCode(ctx, updateTaskCmd, keys, argv...)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("task id does not exist")
+	}
+	return nil
+}

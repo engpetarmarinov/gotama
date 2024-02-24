@@ -11,6 +11,7 @@ type Broker interface {
 	GetAllTasks(ctx context.Context, offset int, limit int) (int64, []*task.Message, error)
 	GetTask(ctx context.Context, taskID string) (*task.Message, error)
 	EnqueueTask(ctx context.Context, msg *task.Message) error
+	UpdateTask(ctx context.Context, msg *task.Message) error
 	//Dequeue(qnames ...string) (*base.TaskMessage, time.Time, error)
 	//Remove(ctx context.Context, msg *base.TaskMessage) error
 	//Complete(ctx context.Context, msg *base.TaskMessage) error
