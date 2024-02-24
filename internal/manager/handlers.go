@@ -35,14 +35,14 @@ func getTasksHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 
 		var tasks []*task.Response
 		for _, taskMsg := range taskMsgs {
-			task, err := task.NewResponseFromMessage(taskMsg)
+			taskResp, err := task.NewResponseFromMessage(taskMsg)
 			if err != nil {
 				slog.Error(err.Error())
 				writeErrorResponse(w, http.StatusInternalServerError, "error getting task response")
 				return
 			}
 
-			tasks = append(tasks, task)
+			tasks = append(tasks, taskResp)
 		}
 
 		resp := struct {
