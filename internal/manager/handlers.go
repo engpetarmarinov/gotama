@@ -3,12 +3,13 @@ package manager
 import (
 	"encoding/json"
 	"github.com/engpetarmarinov/gotama/internal/base"
+	"github.com/engpetarmarinov/gotama/internal/broker"
 	"io"
 	"log/slog"
 	"net/http"
 )
 
-func getTasksHandler(broker base.Broker) func(w http.ResponseWriter, r *http.Request) {
+func getTasksHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//TODO: get tasks
 		resp := base.TaskResponse{}
@@ -16,7 +17,7 @@ func getTasksHandler(broker base.Broker) func(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func getTaskHandler(broker base.Broker) func(w http.ResponseWriter, r *http.Request) {
+func getTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//TODO: get task
 		resp := base.TaskResponse{}
@@ -24,7 +25,7 @@ func getTaskHandler(broker base.Broker) func(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func postTaskHandler(broker base.Broker) func(w http.ResponseWriter, r *http.Request) {
+func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -67,7 +68,7 @@ func postTaskHandler(broker base.Broker) func(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func putTaskHandler(broker base.Broker) func(w http.ResponseWriter, r *http.Request) {
+func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//TODO: update task
 		resp := base.TaskResponse{}
@@ -75,7 +76,7 @@ func putTaskHandler(broker base.Broker) func(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func deleteTaskHandler(broker base.Broker) func(w http.ResponseWriter, r *http.Request) {
+func deleteTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//TODO: delete task
 		resp := base.TaskResponse{}

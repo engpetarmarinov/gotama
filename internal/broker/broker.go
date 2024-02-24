@@ -1,4 +1,4 @@
-package base
+package broker
 
 type Broker interface {
 	Ping() error

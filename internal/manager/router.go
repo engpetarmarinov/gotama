@@ -1,7 +1,7 @@
 package manager
 
 import (
-	"github.com/engpetarmarinov/gotama/internal/base"
+	"github.com/engpetarmarinov/gotama/internal/broker"
 	mw "github.com/engpetarmarinov/gotama/internal/middleware"
 	"net/http"
 )
@@ -16,7 +16,7 @@ func NewRouter() *Router {
 	}
 }
 
-func (r *Router) RegisterRoutes(broker base.Broker) http.Handler {
+func (r *Router) RegisterRoutes(broker broker.Broker) http.Handler {
 	r.mux.HandleFunc(
 		"GET /api/v1/tasks",
 		mw.WithLogging(mw.WithCommonHeaders(mw.WithAuth(mw.WithRBAC(getTasksHandler(broker))))))

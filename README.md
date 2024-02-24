@@ -22,9 +22,10 @@ Start the manager service, the broker (redis) and the workers
 ```bash
 docker-compose up -d
 ```
-or run natively
+or run natively with go
 ```bash
-export $(grep -v '^#' .env | xargs)
-go run cmd/gotama-manager/main.go
+export $(grep -v '^#' local.env | xargs)
+go run cmd/gotama-manager/main.go&
+go run cmd/gotama-worker/main.go&
 ```
 TODO

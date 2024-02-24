@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/engpetarmarinov/gotama/internal/base"
+	"github.com/engpetarmarinov/gotama/internal/broker"
 	"github.com/engpetarmarinov/gotama/internal/config"
 	"log"
 	"log/slog"
@@ -19,10 +20,10 @@ type API interface {
 type Manager struct {
 	ctx    context.Context
 	server *http.Server
-	broker base.Broker
+	broker broker.Broker
 }
 
-func NewManager(broker base.Broker) *Manager {
+func NewManager(broker broker.Broker) *Manager {
 	return &Manager{
 		ctx:    context.Background(),
 		broker: broker,

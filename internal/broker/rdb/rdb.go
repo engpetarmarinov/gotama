@@ -2,13 +2,13 @@ package rdb
 
 import (
 	"context"
-	"github.com/engpetarmarinov/gotama/internal/base"
+	"github.com/engpetarmarinov/gotama/internal/broker"
 	"github.com/engpetarmarinov/gotama/internal/timeutil"
 	"github.com/redis/go-redis/v9"
 )
 
 type RDB struct {
-	base.Broker
+	broker.Broker
 	client redis.UniversalClient
 	clock  timeutil.Clock
 }

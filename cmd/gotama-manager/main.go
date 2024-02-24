@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/engpetarmarinov/gotama/internal/broker/rdb"
 	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/manager"
-	"github.com/engpetarmarinov/gotama/internal/rdb"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"os"
