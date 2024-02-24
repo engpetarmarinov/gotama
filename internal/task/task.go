@@ -1,4 +1,4 @@
-package base
+package task
 
 import (
 	"encoding/json"
@@ -8,37 +8,41 @@ import (
 	"time"
 )
 
-type TaskName int
+type Name int
 
 const (
-	TaskNameUnknown TaskName = iota
-	TaskNameEmail
+	NameUnknown Name = iota
+	NameEmail
 )
 
-func (n TaskName) String() string {
+func (n Name) String() string {
 	switch n {
-	case TaskNameEmail:
+	case NameEmail:
 		return "EMAIL"
 	}
 	panic("task name unknown")
 }
 
-func GetTaskName(name string) (TaskName, error) {
+func GetName(name string) (Name, error) {
 	switch strings.ToUpper(name) {
 	case "EMAIL":
-		return TaskNameEmail, nil
+		return NameEmail, nil
 	}
-	return TaskNameUnknown, errors.New("task name unknown")
+	return NameUnknown, errors.New("task name unknown")
 }
 
-type TaskRequest struct {
+const (
+	QueueDefault string = "default"
+)
+
+type Request struct {
 	Name    string          `json:"name"`
 	Type    string          `json:"type"`
 	Period  string          `json:"period"`
 	Payload json.RawMessage `json:"payload"`
 }
 
-type TaskResponse struct {
+type Response struct {
 	ID      string      `json:"ID"`
 	Status  string      `json:"status"`
 	Name    string      `json:"name"`
@@ -49,64 +53,65 @@ type TaskResponse struct {
 	Error   string      `json:"error"`
 }
 
-type TaskStatus int
+type Status int
 
 const (
-	TaskStatusPending TaskStatus = iota + 1
-	TaskStatusRunning
-	TaskStatusSucceeded
-	TaskStatusFailed
-	TaskStatusRetry
+	StatusPending Status = iota + 1
+	StatusRunning
+	StatusSucceeded
+	StatusFailed
+	StatusRetry
 )
 
-func (s TaskStatus) String() string {
+func (s Status) String() string {
 	switch s {
-	case TaskStatusPending:
+	case StatusPending:
 		return "PENDING"
-	case TaskStatusRunning:
+	case StatusRunning:
 		return "RUNNING"
-	case TaskStatusSucceeded:
+	case StatusSucceeded:
 		return "SUCCEEDED"
-	case TaskStatusFailed:
+	case StatusFailed:
 		return "FAILED"
-	case TaskStatusRetry:
+	case StatusRetry:
 		return "RETRY"
 	}
 	panic("task status unknown")
 }
 
-type TaskType int
+type Type int
 
 const (
-	TaskTypeOnce TaskType = iota + 1
-	TaskTypeRecurring
+	TypeOnce Type = iota + 1
+	TypeRecurring
 )
 
-func (t TaskType) String() string {
+func (t Type) String() string {
 	switch t {
-	case TaskTypeOnce:
+	case TypeOnce:
 		return "ONCE"
-	case TaskTypeRecurring:
+	case TypeRecurring:
 		return "RECURRING"
 	}
 	panic("task type unknown")
 }
 
-func GetTaskType(t string) (TaskType, error) {
+func GetType(t string) (Type, error) {
 	switch strings.ToUpper(t) {
 	case "ONCE":
-		return TaskTypeOnce, nil
+		return TypeOnce, nil
 	case "RECURRING":
-		return TaskTypeRecurring, nil
+		return TypeRecurring, nil
 	}
-	return TaskTypeOnce, errors.New("task type unknown")
+	return TypeOnce, errors.New("task type unknown")
 }
 
-type TaskMessage struct {
+type Message struct {
 	ID          string
 	Name        string
-	Status      TaskStatus
-	Type        TaskType
+	Queue       string
+	Status      Status
+	Type        Type
 	Period      time.Duration
 	Payload     []byte
 	Result      []byte
@@ -118,27 +123,30 @@ type TaskMessage struct {
 	Error       string
 }
 
-func NewTaskMessageFromRequest(req *TaskRequest) (*TaskMessage, error) {
+func NewMessageFromRequest(req *Request) (*Message, error) {
 	id := uuid.New()
-	name, err := GetTaskName(req.Name)
+	name, err := GetName(req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	taskType, err := GetTaskType(req.Type)
+	taskType, err := GetType(req.Type)
 	if err != nil {
 		return nil, err
 	}
+
+	//TODO: validate payload for the specific task
 
 	period, err := time.ParseDuration(req.Period)
 	if err != nil {
 		return nil, err
 	}
 
-	return &TaskMessage{
+	return &Message{
 		ID:          id.String(),
 		Name:        name.String(),
-		Status:      TaskStatusPending,
+		Queue:       QueueDefault,
+		Status:      StatusPending,
 		Type:        taskType,
 		Period:      period,
 		Payload:     req.Payload,
@@ -152,14 +160,14 @@ func NewTaskMessageFromRequest(req *TaskRequest) (*TaskMessage, error) {
 	}, nil
 }
 
-func NewTaskResponseFromMessage(msg *TaskMessage) (*TaskResponse, error) {
+func NewResponseFromMessage(msg *Message) (*Response, error) {
 	var payload interface{}
 	err := json.Unmarshal(msg.Payload, &payload)
 	if err != nil {
 		return nil, err
 	}
 
-	return &TaskResponse{
+	return &Response{
 		ID:      msg.ID,
 		Status:  msg.Status.String(),
 		Name:    msg.Name,
@@ -169,4 +177,9 @@ func NewTaskResponseFromMessage(msg *TaskMessage) (*TaskResponse, error) {
 		Result:  msg.Result,
 		Error:   msg.Error,
 	}, nil
+}
+
+func EncodeMessage(msg *Message) ([]byte, error) {
+	//TODO: use protobuf to save space
+	return json.Marshal(msg)
 }

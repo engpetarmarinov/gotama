@@ -60,7 +60,7 @@ func writeSuccessResponse(w http.ResponseWriter, data interface{}) {
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		slog.Error("error when trying to write success base.Response", "error", err.Error())
-		writeErrorResponse(w, base.ResponseErrorCodeInternalError, "error when trying to write success base.Response")
+		writeErrorResponse(w, http.StatusInternalServerError, "error when trying to write success base.Response")
 	}
 }
 
