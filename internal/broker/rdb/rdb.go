@@ -2,7 +2,6 @@ package rdb
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/engpetarmarinov/gotama/internal/broker"
@@ -155,17 +154,16 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 	}
 
 	for _, encoded := range encodedMsgs {
-		var msg task.Message
 		encodedStr, ok := encoded.(string)
 		if !ok {
 			return 0, tasks, errors.New(fmt.Sprintf("error trying to cast %v to []byte", encoded))
 		}
-		err := json.Unmarshal([]byte(encodedStr), &msg)
+		msg, err := task.DecodeMessage(encodedStr)
 		if err != nil {
-			slog.Error("Error unmarshalling msg", "err", err)
+			slog.Error("Error decoding msg", "err", err)
 			return 0, tasks, err
 		}
-		tasks = append(tasks, &msg)
+		tasks = append(tasks, msg)
 	}
 
 	return totalTasks, tasks, nil
@@ -173,15 +171,22 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 
 // GetTask fetches a task by its ID.
 func (r *RDB) GetTask(ctx context.Context, taskID string) (*task.Message, error) {
-	encoded := r.client.HGet(ctx, TaskKey(task.QueueDefault, taskID), "msg").Val()
-	var msg task.Message
-	err := json.Unmarshal([]byte(encoded), &msg)
+	cmd := r.client.HGet(ctx, TaskKey(task.QueueDefault, taskID), "msg")
+	err := cmd.Err()
 	if err != nil {
-		slog.Error("Error unmarshalling msg", "err", err)
+		if errors.Is(err, redis.Nil) {
+			return nil, errors.New("not found")
+		}
+		return nil, err
+	}
+	encoded := cmd.Val()
+	msg, err := task.DecodeMessage(encoded)
+	if err != nil {
+		slog.Error("Error decoding msg", "err", err)
 		return nil, err
 	}
 
-	return &msg, nil
+	return msg, nil
 }
 
 // enqueueTaskCmd enqueues a given task message.

@@ -181,3 +181,12 @@ func EncodeMessage(msg *Message) ([]byte, error) {
 	//TODO: use protobuf to save space
 	return json.Marshal(msg)
 }
+
+func DecodeMessage(encoded string) (*Message, error) {
+	var msg Message
+	err := json.Unmarshal([]byte(encoded), &msg)
+	if err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}

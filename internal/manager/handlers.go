@@ -67,7 +67,7 @@ func getTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		taskMsg, err := broker.GetTask(context.Background(), taskID)
 		if err != nil {
 			slog.Warn(err.Error())
-			writeErrorResponse(w, http.StatusInternalServerError, "error getting msg")
+			writeErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
 
@@ -150,7 +150,7 @@ func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		existingTaskMsg, err := broker.GetTask(context.Background(), taskID)
 		if err != nil {
 			slog.Warn(err.Error())
-			writeErrorResponse(w, http.StatusNotFound, "error getting msg")
+			writeErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
 
@@ -224,7 +224,7 @@ func deleteTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http
 		existingTaskMsg, err := broker.GetTask(context.Background(), taskID)
 		if err != nil {
 			slog.Warn(err.Error())
-			writeErrorResponse(w, http.StatusNotFound, "error getting msg")
+			writeErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
 
