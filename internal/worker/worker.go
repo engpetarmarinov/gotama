@@ -77,9 +77,10 @@ func (w *Worker) Run() {
 }
 
 func (w *Worker) Shutdown() error {
-	slog.Info("worker graceful shutdown")
+	slog.Info("worker graceful shutting down...")
 	w.cancel()
 	w.wg.Wait()
+	slog.Info("worker gracefully shut down all goroutines")
 	return nil
 }
 
