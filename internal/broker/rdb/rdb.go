@@ -165,15 +165,13 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 
 // GetTask fetches a task by its ID.
 func (r *RDB) GetTask(ctx context.Context, taskID string) (*task.Message, error) {
-	cmd := r.client.HGet(ctx, TaskKey(task.QueueDefault, taskID), "msg")
-	err := cmd.Err()
+	encoded, err := r.client.HGet(ctx, TaskKey(task.QueueDefault, taskID), "msg").Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, errors.New("not found")
 		}
 		return nil, err
 	}
-	encoded := cmd.Val()
 	msg, err := task.DecodeMessage(encoded)
 	if err != nil {
 		slog.Error("Error decoding msg", "err", err)
