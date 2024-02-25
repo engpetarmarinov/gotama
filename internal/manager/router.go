@@ -17,6 +17,7 @@ func NewRouter() *Router {
 }
 
 func (r *Router) RegisterRoutes(broker broker.Broker) http.Handler {
+	//TODO: add swagger
 	r.mux.HandleFunc(
 		"GET /api/v1/tasks",
 		mw.WithLogging(mw.WithCommonHeaders(mw.WithAuth(mw.WithRBAC(getTasksHandler(broker))))))

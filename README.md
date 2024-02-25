@@ -12,19 +12,24 @@ Simple scalable system that can schedule and execute tasks.
 ![architecture](./docs/assets/architecture.png)
 
 ## Why?
-TODO
+* manager - dedicated manager to have the flexibility to add authentication, authorization with RBAC, service mesh with mTLS, etc.
+* broker - in order to be highly scalable and durable, a message broker implementation with redis and persistent storage is a solid choice  
+* workers - horizontally scaling by spawning multiple workers, so each of them can process tasks simultaneously from the message queue with pending tasks 
 
 ## Run locally
 Prerequisites
 * docker and docker-compose
 
-Start the manager service, the broker (redis) and the workers
+Start the manager service, the broker (redis) and the workers within docker
 ```bash
-docker-compose up -d
+docker-compose up --scale worker=3 -d
 ```
-or run natively with go
+or run natively
 ```bash
 export $(grep -v '^#' local.env | xargs)
+redis-server --requirepass "$${REDIS_PASSWORD:?REDIS_PASSWORD variable is not set}" \
+        --port "$${REDIS_PORT:?REDIS_PORT variable is not set}" \
+        ./redis/redis.conf&
 go run cmd/gotama-manager/main.go&
 go run cmd/gotama-worker/main.go&
 go run cmd/gotama-worker/main.go&

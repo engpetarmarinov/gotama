@@ -3,5 +3,6 @@ package main
 import "fmt"
 
 func main() {
-	fmt.Println("gotama")
+	//TODO: implement gotama-cli client
+	fmt.Println("gotama-cli")
 }
