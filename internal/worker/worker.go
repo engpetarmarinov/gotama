@@ -28,6 +28,7 @@ type Worker struct {
 	broker broker.Broker
 	config config.API
 	clock  timeutil.Clock
+	cancel context.CancelFunc
 }
 
 func NewWorker(broker broker.Broker, config config.API, clock timeutil.Clock) *Worker {
@@ -48,7 +49,7 @@ func (w *Worker) Run() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	w.cancel = cancel
 
 	for i := 0; i < workerGoroutines; i++ {
 		w.wg.Add(1)
@@ -62,7 +63,7 @@ func (w *Worker) Run() {
 					slog.Info("worker goroutine received done")
 					return
 				case <-tick:
-					err := w.exec(ctx)
+					err := w.exec(context.Background())
 					if errors.Is(err, base.ErrorNoTasksInQueue) {
 						slog.Info("no tasks in queue")
 					} else if err != nil {
@@ -73,12 +74,12 @@ func (w *Worker) Run() {
 
 		}(ctx, w.wg)
 	}
-
-	w.wg.Wait()
 }
 
 func (w *Worker) Shutdown() error {
-	//TODO: graceful shutdown
+	slog.Info("worker graceful shutdown")
+	w.cancel()
+	w.wg.Wait()
 	return nil
 }
 

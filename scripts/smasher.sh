@@ -12,6 +12,4 @@ for ((i=1; i<=10000; i++)); do
             "body": "Take a break!"
         }
     }'
-
-    sleep 0.0001
 done

@@ -35,13 +35,13 @@ func main() {
 
 	<-shutdown
 	slog.Info("graceful shutdown...")
-	err := broker.Close()
-	if err != nil {
-		slog.Error("error closing broker", "error", err)
-	}
-
-	err = wrk.Shutdown()
+	err := wrk.Shutdown()
 	if err != nil {
 		slog.Error("error shutting down broker", "error", err)
+	}
+
+	err = broker.Close()
+	if err != nil {
+		slog.Error("error closing broker", "error", err)
 	}
 }

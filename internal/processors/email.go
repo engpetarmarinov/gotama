@@ -28,12 +28,9 @@ func (ep *EmailProcessor) ProcessTask(ctx context.Context, t *task.Message) erro
 	}
 	slog.Info("Sending an email", "to", payload.To, "title", payload.Title, "body", payload.Body)
 	//simulate dummy load
-	tick := time.Tick(time.Second * 5)
+	tick := time.Tick(time.Second * 2)
 	for {
 		select {
-		case <-ctx.Done():
-			slog.Warn("terminating sending of email")
-			return nil
 		case <-tick:
 			slog.Info("Email sent", "to", payload.To, "title", payload.Title, "body", payload.Body)
 			//return errors.New("test error")
