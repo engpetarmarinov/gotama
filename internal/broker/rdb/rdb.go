@@ -71,12 +71,6 @@ func PendingKey(qname string) string {
 	return fmt.Sprintf("%spending", QueueKeyPrefix(qname))
 }
 
-// TODO: do I need active tasks?
-// ActiveKey returns a redis key for the active tasks.
-func ActiveKey(qname string) string {
-	return fmt.Sprintf("%sactive", QueueKeyPrefix(qname))
-}
-
 // ScheduledKey returns a redis key for the scheduled tasks.
 func ScheduledKey(qname string) string {
 	return fmt.Sprintf("%sscheduled", QueueKeyPrefix(qname))
@@ -194,10 +188,13 @@ func (r *RDB) GetTask(ctx context.Context, taskID string) (*task.Message, error)
 // Input:
 // KEYS[1] -> gotama:<qname>:t:<task_id>
 // KEYS[2] -> gotama:<qname>:pending
+// KEYS[3] -> gotama:<qname>:scheduled
 // --
 // ARGV[1] -> task message data
 // ARGV[2] -> task ID
 // ARGV[3] -> current unix time in nano sec
+// ARGV[4] -> period, e.g. 5s or empty
+// ARGV[5] -> type, RECURRING or ONCE
 //
 // Output:
 // Returns 1 if successfully enqueued
@@ -208,9 +205,13 @@ if redis.call("EXISTS", KEYS[1]) == 1 then
 end
 redis.call("HSET", KEYS[1],
            "msg", ARGV[1],
-           "state", "pending",
-           "pending_since", ARGV[3])
+           "status", "pending",
+           "pending_since", ARGV[3],
+           "period", ARGV[4])
 redis.call("LPUSH", KEYS[2], ARGV[2])
+if ARGV[5] == "RECURRING" then
+	redis.call("LPUSH", KEYS[3], ARGV[2])
+end
 return 1
 `)
 
@@ -226,11 +227,14 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 	keys := []string{
 		TaskKey(msg.Queue, msg.ID),
 		PendingKey(msg.Queue),
+		ScheduledKey(msg.Queue),
 	}
 	argv := []interface{}{
 		encoded,
 		msg.ID,
 		r.clock.Now().UnixNano(),
+		msg.Period.String(),
+		msg.Type.String(),
 	}
 	slog.Info("Adding task", "id", keys[0], "queue", keys[1])
 	n, err := r.runScriptWithErrorCode(ctx, enqueueTaskCmd, keys, argv...)
@@ -248,10 +252,13 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 // Input:
 // KEYS[1] -> gotama:<qname>:t:<task_id>
 // KEYS[2] -> gotama:<qname>:pending
+// KEYS[3] -> gotama:<qname>:scheduled
 // --
 // ARGV[1] -> task message data
 // ARGV[2] -> task ID
 // ARGV[3] -> current unix time in nano sec
+// ARGV[4] -> period, e.g. 5s or empty
+// ARGV[5] -> type, RECURRING or ONCE
 //
 // Output:
 // Returns 1 if successfully enqueued
@@ -262,10 +269,15 @@ if redis.call("EXISTS", KEYS[1]) == 0 then
 end
 redis.call("HSET", KEYS[1],
            "msg", ARGV[1],
-           "state", "pending",
-           "pending_since", ARGV[3])
+           "status", "pending",
+           "pending_since", ARGV[3],
+           "period", ARGV[4])
 redis.call("LREM", KEYS[2], 0, ARGV[2])
 redis.call("LPUSH", KEYS[2], ARGV[2])
+redis.call("LREM", KEYS[3], 0, ARGV[2])
+if ARGV[5] == "RECURRING" then
+	redis.call("LPUSH", KEYS[3], ARGV[2])
+end
 return 1
 `)
 
@@ -278,11 +290,14 @@ func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
 	keys := []string{
 		TaskKey(msg.Queue, msg.ID),
 		PendingKey(msg.Queue),
+		ScheduledKey(msg.Queue),
 	}
 	argv := []interface{}{
 		encoded,
 		msg.ID,
 		r.clock.Now().UnixNano(),
+		msg.Period.String(),
+		msg.Type.String(),
 	}
 	slog.Info("Updating task", "id", keys[0], "queue", keys[1])
 	n, err := r.runScriptWithErrorCode(ctx, updateTaskCmd, keys, argv...)

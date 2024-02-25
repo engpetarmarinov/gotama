@@ -102,7 +102,7 @@ func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 		taskMsg, err := task.NewMessageFromRequest(&taskReq)
 		if err != nil {
 			slog.Warn(err.Error())
-			writeErrorResponse(w, http.StatusBadRequest, "error getting task msg")
+			writeErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -172,7 +172,7 @@ func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		newTaskMsg, err := task.NewMessageFromRequest(&taskReq)
 		if err != nil {
 			slog.Warn(err.Error())
-			writeErrorResponse(w, http.StatusBadRequest, "error getting task msg")
+			writeErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 

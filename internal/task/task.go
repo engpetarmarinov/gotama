@@ -135,9 +135,16 @@ func NewMessageFromRequest(req *Request) (*Message, error) {
 		return nil, err
 	}
 
-	period, err := time.ParseDuration(req.Period)
-	if err != nil {
-		return nil, err
+	var period time.Duration
+	if taskType == TypeRecurring {
+		period, err = time.ParseDuration(req.Period)
+		if err != nil {
+			return nil, err
+		}
+
+		if period < time.Second {
+			return nil, errors.New("period has to be at least 1s")
+		}
 	}
 
 	return &Message{
