@@ -45,7 +45,7 @@ curl --location 'http://localhost:8080/api/v1/tasks' \
     "type": "recurring",
     "period": "5s",
     "payload": {
-        "to": "eng.petar.marinov@gmail.com",
+        "to": "gotama@gotama.io",
         "title": "Reminder",
         "body": "Take a break!"
     }
@@ -68,7 +68,7 @@ curl --location --request PUT 'http://localhost:8080/api/v1/tasks/11ef259c-8523-
     "type": "recurring",
     "period": "5s",
     "payload": {
-        "to": "eng.petar.marinov@gmail.com",
+        "to": "gotama@gotama.io",
         "title": "Reminder",
         "body": "Take a break!"
     }
