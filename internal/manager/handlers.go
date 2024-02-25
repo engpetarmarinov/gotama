@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/engpetarmarinov/gotama/internal/broker"
+	"github.com/engpetarmarinov/gotama/internal/processors"
 	"github.com/engpetarmarinov/gotama/internal/task"
 	"io"
 	"log/slog"
@@ -105,6 +106,21 @@ func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 			return
 		}
 
+		taskName, _ := task.GetName(taskMsg.Name)
+		processor, err := processors.ProcessorFactory(taskName)
+		if err != nil {
+			slog.Warn(err.Error())
+			writeErrorResponse(w, http.StatusBadRequest, "no processor for this task name")
+			return
+		}
+
+		err = processor.ValidatePayload(taskMsg.Payload)
+		if err != nil {
+			slog.Warn(err.Error())
+			writeErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
 		err = broker.EnqueueTask(context.Background(), taskMsg)
 		if err != nil {
 			slog.Error(err.Error())
@@ -157,6 +173,21 @@ func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			slog.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, "error getting task msg")
+			return
+		}
+
+		taskName, _ := task.GetName(newTaskMsg.Name)
+		processor, err := processors.ProcessorFactory(taskName)
+		if err != nil {
+			slog.Warn(err.Error())
+			writeErrorResponse(w, http.StatusBadRequest, "no processor for this task name")
+			return
+		}
+
+		err = processor.ValidatePayload(newTaskMsg.Payload)
+		if err != nil {
+			slog.Warn(err.Error())
+			writeErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 

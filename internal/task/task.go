@@ -135,8 +135,6 @@ func NewMessageFromRequest(req *Request) (*Message, error) {
 		return nil, err
 	}
 
-	//TODO: validate payload for the specific task
-
 	period, err := time.ParseDuration(req.Period)
 	if err != nil {
 		return nil, err
