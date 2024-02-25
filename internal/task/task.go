@@ -49,7 +49,6 @@ type Response struct {
 	Type    string      `json:"type"`
 	Period  string      `json:"period"`
 	Payload interface{} `json:"payload"`
-	Result  interface{} `json:"result"`
 	Error   string      `json:"error"`
 }
 
@@ -60,7 +59,6 @@ const (
 	StatusRunning
 	StatusSucceeded
 	StatusFailed
-	StatusRetry
 )
 
 func (s Status) String() string {
@@ -73,8 +71,6 @@ func (s Status) String() string {
 		return "SUCCEEDED"
 	case StatusFailed:
 		return "FAILED"
-	case StatusRetry:
-		return "RETRY"
 	}
 	panic("task status unknown")
 }
@@ -114,12 +110,10 @@ type Message struct {
 	Type        Type
 	Period      time.Duration
 	Payload     []byte
-	Result      []byte
 	CreatedAt   time.Time
 	CompletedAt time.Time
 	FailedAt    time.Time
 	NumRetries  int
-	MaxRetries  int
 	Error       string
 }
 
@@ -155,12 +149,10 @@ func NewMessageFromRequest(req *Request) (*Message, error) {
 		Type:        taskType,
 		Period:      period,
 		Payload:     req.Payload,
-		Result:      nil,
 		CreatedAt:   time.Now(),
 		CompletedAt: time.Time{},
 		FailedAt:    time.Time{},
 		NumRetries:  0,
-		MaxRetries:  0,
 		Error:       "",
 	}, nil
 }
@@ -179,7 +171,6 @@ func NewResponseFromMessage(msg *Message) (*Response, error) {
 		Type:    msg.Type.String(),
 		Period:  msg.Period.String(),
 		Payload: payload,
-		Result:  msg.Result,
 		Error:   msg.Error,
 	}, nil
 }

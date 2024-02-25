@@ -26,7 +26,7 @@ func (ep *EmailProcessor) ProcessTask(ctx context.Context, t *task.Message) erro
 		slog.Error("error unmarshalling email payload", "err", t.Payload)
 		return fmt.Errorf("error unmarshalling email payload %s", err.Error())
 	}
-	slog.Info("Processing sending an email", "to", payload.To, "title", payload.Title, "body", payload.Body)
+	slog.Info("Sending an email", "to", payload.To, "title", payload.Title, "body", payload.Body)
 	//simulate dummy load
 	tick := time.Tick(time.Second * 5)
 	for {
@@ -35,6 +35,8 @@ func (ep *EmailProcessor) ProcessTask(ctx context.Context, t *task.Message) erro
 			slog.Warn("terminating sending of email")
 			return nil
 		case <-tick:
+			slog.Info("Email sent", "to", payload.To, "title", payload.Title, "body", payload.Body)
+			//return errors.New("test error")
 			return nil
 		default:
 			_ = rand.Int() * rand.Int()

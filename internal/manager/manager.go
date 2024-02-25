@@ -21,12 +21,14 @@ type Manager struct {
 	ctx    context.Context
 	server *http.Server
 	broker broker.Broker
+	config config.API
 }
 
-func NewManager(broker broker.Broker) *Manager {
+func NewManager(broker broker.Broker, config config.API) *Manager {
 	return &Manager{
 		ctx:    context.Background(),
 		broker: broker,
+		config: config,
 	}
 }
 func (m *Manager) Shutdown() error {
@@ -36,11 +38,11 @@ func (m *Manager) Shutdown() error {
 	return nil
 }
 
-func (m *Manager) Run(config config.API) {
+func (m *Manager) Run() {
 	router := NewRouter().RegisterRoutes(m.broker)
 	go func(mux http.Handler) {
 		server := http.Server{
-			Addr:    fmt.Sprintf(":%s", config.Get("MANAGER_PORT")),
+			Addr:    fmt.Sprintf(":%s", m.config.Get("MANAGER_PORT")),
 			Handler: mux,
 		}
 

@@ -27,6 +27,8 @@ or run natively with go
 export $(grep -v '^#' local.env | xargs)
 go run cmd/gotama-manager/main.go&
 go run cmd/gotama-worker/main.go&
+go run cmd/gotama-worker/main.go&
+go run cmd/gotama-worker/main.go&
 ```
 ## RESTful API
 Add a task

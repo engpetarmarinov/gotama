@@ -5,6 +5,7 @@ import (
 	"github.com/engpetarmarinov/gotama/internal/broker/rdb"
 	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/manager"
+	"github.com/engpetarmarinov/gotama/internal/timeutil"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"os"
@@ -24,9 +25,9 @@ func main() {
 		panic("panic casting to redis client")
 	}
 
-	broker := rdb.NewRDB(client)
-	mgr := manager.NewManager(broker)
-	mgr.Run(cfg)
+	broker := rdb.NewRDB(client, timeutil.NewRealClock())
+	mgr := manager.NewManager(broker, cfg)
+	mgr.Run()
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGTERM, syscall.SIGINT)

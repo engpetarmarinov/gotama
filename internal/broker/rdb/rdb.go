@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/engpetarmarinov/gotama/internal/base"
 	"github.com/engpetarmarinov/gotama/internal/broker"
 	"github.com/engpetarmarinov/gotama/internal/task"
 	"github.com/engpetarmarinov/gotama/internal/timeutil"
@@ -17,10 +18,10 @@ type RDB struct {
 	clock  timeutil.Clock
 }
 
-func NewRDB(client redis.UniversalClient) *RDB {
+func NewRDB(client redis.UniversalClient, clock timeutil.Clock) *RDB {
 	return &RDB{
 		client: client,
-		clock:  timeutil.NewRealClock(),
+		clock:  clock,
 	}
 }
 
@@ -69,6 +70,16 @@ func TaskKey(qname, id string) string {
 // PendingKey returns a redis key for the given queue name.
 func PendingKey(qname string) string {
 	return fmt.Sprintf("%spending", QueueKeyPrefix(qname))
+}
+
+// RunningKey returns a redis key for the given queue name.
+func RunningKey(qname string) string {
+	return fmt.Sprintf("%srunning", QueueKeyPrefix(qname))
+}
+
+// FailedKey returns a redis key for the given queue name.
+func FailedKey(qname string) string {
+	return fmt.Sprintf("%sfailed", QueueKeyPrefix(qname))
 }
 
 // ScheduledKey returns a redis key for the scheduled tasks.
@@ -150,7 +161,7 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 	for _, encoded := range encodedMsgs {
 		encodedStr, ok := encoded.(string)
 		if !ok {
-			return 0, tasks, errors.New(fmt.Sprintf("error trying to cast %v to []byte", encoded))
+			return 0, tasks, errors.New(fmt.Sprintf("error trying to cast %v to string", encoded))
 		}
 		msg, err := task.DecodeMessage(encodedStr)
 		if err != nil {
@@ -245,37 +256,72 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 	return nil
 }
 
+// Input:
+// KEYS[1] -> gotama:<qname>:pending
+// KEYS[2] -> gotama:<qname>:running
+// --
+// ARGV[1] -> task key prefix
+//
+// Output:
+// Returns nil if no processable task is found in the given queue.
+// Returns an encoded TaskMessage.
+var dequeueTaskCmd = redis.NewScript(`
+if redis.call("EXISTS", KEYS[1]) == 1 then
+	local id = redis.call("RPOPLPUSH", KEYS[1], KEYS[2])
+	if id then
+		local key = ARGV[1] .. id
+		redis.call("HSET", key, "status", "running")
+		redis.call("HDEL", key, "pending_since")
+		return redis.call("HGET", key, "msg")
+	end
+end
+return nil`)
+
+func (r *RDB) DequeueTask(ctx context.Context, qname string) (*task.Message, error) {
+	keys := []string{
+		PendingKey(qname),
+		RunningKey(qname),
+	}
+	argv := []interface{}{
+		TaskKeyPrefix(qname),
+	}
+	encoded, err := dequeueTaskCmd.Run(ctx, r.client, keys, argv...).Result()
+	if errors.Is(err, redis.Nil) {
+		return nil, base.ErrorNoTasksInQueue
+	} else if err != nil {
+		return nil, errors.New(fmt.Sprintf("redis eval error: %v", err))
+	}
+
+	encodedStr, ok := encoded.(string)
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("error trying to cast %v to string", encoded))
+	}
+
+	msg, err := task.DecodeMessage(encodedStr)
+	if err != nil {
+		slog.Error("Error decoding msg", "err", err)
+		return nil, err
+	}
+
+	return msg, nil
+}
+
 // updateTaskCmd enqueues a given task message.
 //
 // Input:
 // KEYS[1] -> gotama:<qname>:t:<task_id>
-// KEYS[2] -> gotama:<qname>:pending
-// KEYS[3] -> gotama:<qname>:scheduled
 // --
 // ARGV[1] -> task message data
-// ARGV[2] -> task ID
-// ARGV[3] -> current unix time in nano sec
-// ARGV[4] -> period, e.g. 5s or empty
-// ARGV[5] -> type, RECURRING or ONCE
 //
 // Output:
 // Returns 1 if successfully enqueued
-// Returns 0 if task ID already exists
+// Returns 0 if task ID does not exist
 var updateTaskCmd = redis.NewScript(`
 if redis.call("EXISTS", KEYS[1]) == 0 then
 	return 0
 end
 redis.call("HSET", KEYS[1],
-           "msg", ARGV[1],
-           "status", "pending",
-           "pending_since", ARGV[3],
-           "period", ARGV[4])
-redis.call("LREM", KEYS[2], 0, ARGV[2])
-redis.call("LPUSH", KEYS[2], ARGV[2])
-redis.call("LREM", KEYS[3], 0, ARGV[2])
-if ARGV[5] == "RECURRING" then
-	redis.call("LPUSH", KEYS[3], ARGV[2])
-end
+           "msg", ARGV[1])
 return 1
 `)
 
@@ -287,17 +333,11 @@ func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
 	}
 	keys := []string{
 		TaskKey(msg.Queue, msg.ID),
-		PendingKey(msg.Queue),
-		ScheduledKey(msg.Queue),
 	}
 	argv := []interface{}{
 		encoded,
-		msg.ID,
-		r.clock.Now().UnixNano(),
-		msg.Period.String(),
-		msg.Type.String(),
 	}
-	slog.Info("Updating task", "id", keys[0], "queue", keys[1])
+	slog.Info("Updating task", "id", keys[0])
 	n, err := r.runScriptWithErrorCode(ctx, updateTaskCmd, keys, argv...)
 	if err != nil {
 		return err
@@ -337,4 +377,70 @@ func (r *RDB) RemoveTask(ctx context.Context, taskID string) error {
 	}
 
 	return r.runScript(ctx, removeCmd, keys, argv...)
+}
+
+// KEYS[1] -> gotama:<qname>:running
+// KEYS[2] -> gotama:<qname>:retry
+// KEYS[3] -> gotama:<qname>:t:<task_id>
+// -------
+// ARGV[1] -> task ID
+var scheduleTaskRetryCmd = redis.NewScript(`
+if redis.call("LREM", KEYS[1], 0, ARGV[1]) == 0 then
+  return redis.error_reply("NOT FOUND")
+end
+redis.call("LPUSH", KEYS[2], ARGV[1])
+redis.call("HSET", KEYS[3], "status", "retry")
+return redis.status_reply("OK")`)
+
+// ScheduleTaskRetry moves the task from running queue to the retry queue.
+func (r *RDB) RequeueTaskRetry(ctx context.Context, msg *task.Message) error {
+	keys := []string{
+		RunningKey(msg.Queue),
+		RetryKey(msg.Queue),
+		TaskKey(msg.Queue, msg.ID),
+	}
+	return r.runScript(ctx, scheduleTaskRetryCmd, keys, msg.ID)
+}
+
+// KEYS[1] -> gotama:<qname>:running
+// KEYS[2] -> gotama:<qname>:failed
+// KEYS[3] -> gotama:<qname>:t:<task_id>
+// -------
+// ARGV[1] -> task ID
+var requeueTaskFailedCmd = redis.NewScript(`
+if redis.call("LREM", KEYS[1], 0, ARGV[1]) == 0 then
+  return redis.error_reply("NOT FOUND")
+end
+redis.call("LPUSH", KEYS[2], ARGV[1])
+redis.call("HSET", KEYS[3], "status", "failed")
+return redis.status_reply("OK")`)
+
+// RequeueTaskFailed moves the task from running queue to the failed queue.
+func (r *RDB) RequeueTaskFailed(ctx context.Context, msg *task.Message) error {
+	keys := []string{
+		RunningKey(msg.Queue),
+		FailedKey(msg.Queue),
+		TaskKey(msg.Queue, msg.ID),
+	}
+	return r.runScript(ctx, requeueTaskFailedCmd, keys, msg.ID)
+}
+
+// KEYS[1] -> gotama:<qname>:running
+// KEYS[2] -> gotama:<qname>:t:<task_id>
+// -------
+// ARGV[1] -> task ID
+var markTaskAsCompleteCmd = redis.NewScript(`
+if redis.call("LREM", KEYS[1], 0, ARGV[1]) == 0 then
+  return redis.error_reply("NOT FOUND")
+end
+redis.call("HSET", KEYS[2], "status", "succeeded")
+return redis.status_reply("OK")`)
+
+// MarkTaskAsComplete moves the task from running queue to the failed queue.
+func (r *RDB) MarkTaskAsComplete(ctx context.Context, msg *task.Message) error {
+	keys := []string{
+		RunningKey(msg.Queue),
+		TaskKey(msg.Queue, msg.ID),
+	}
+	return r.runScript(ctx, markTaskAsCompleteCmd, keys, msg.ID)
 }
