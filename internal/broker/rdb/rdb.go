@@ -109,11 +109,11 @@ const (
 // Output:
 // Returns {total_keys, paginated_keys}
 var getAllTasksCmd = redis.NewScript(`
-    local keys = redis.call('KEYS', KEYS[1])
+    local keys = redis.call("KEYS", KEYS[1])
     local sorted_keys = {}
     for i, key in ipairs(keys) do
-        local created_at = redis.call('HGET', key, 'created_at')
-        local msg = redis.call('HGET', key, 'msg')
+        local created_at = redis.call("HGET", key, "created_at")
+        local msg = redis.call("HGET", key, "msg")
         sorted_keys[i] = {tonumber(created_at) or 0, key , msg}
     end
     local function customSort(a, b)
@@ -464,33 +464,33 @@ func (r *RDB) MarkTaskAsComplete(ctx context.Context, msg *task.Message) error {
 // -------
 // ARGV[1] -> current time in unix milli sec
 var enqueueScheduledTasksCmd = redis.NewScript(`
-local retry_task_ids = redis.call('LRANGE', KEYS[4], 0, -1)
+local retry_task_ids = redis.call("LRANGE", KEYS[4], 0, -1)
 
 for _, task_id in ipairs(retry_task_ids) do
     local task_key = KEYS[3] .. task_id
-    local status = redis.call('HGET', task_key, 'status')
+    local status = redis.call("HGET", task_key, "status")
 
-    if status ~= 'failed' and status ~= 'pending' then
+    if status == "retry" then
         -- Priorities with RPUSH
-        redis.call('RPUSH', KEYS[2], task_id)
-        redis.call('HSET', task_key, 'pending_since', ARGV[1])
-        redis.call('HSET', task_key, 'status', 'pending')
+        redis.call("RPUSH", KEYS[2], task_id)
+        redis.call("HSET", task_key, "pending_since", ARGV[1])
+        redis.call("HSET", task_key, "status", "pending")
     end
 end
 
-local scheduled_task_ids = redis.call('LRANGE', KEYS[1], 0, -1)
+local scheduled_task_ids = redis.call("LRANGE", KEYS[1], 0, -1)
 
 for _, task_id in ipairs(scheduled_task_ids) do
     local task_key = KEYS[3] .. task_id
-    local pending_since = tonumber(redis.call('HGET', task_key, 'pending_since'))
-    local status = redis.call('HGET', task_key, 'status')
-    local period = tonumber(redis.call('HGET', task_key, 'period'))
+    local pending_since = tonumber(redis.call("HGET", task_key, "pending_since"))
+    local status = redis.call("HGET", task_key, "status")
+    local period = tonumber(redis.call("HGET", task_key, "period"))
     local current_time = tonumber(ARGV[1])
 
-    if status ~= 'pending' and current_time > pending_since + period then
-        redis.call('LPUSH', KEYS[2], task_id)
-        redis.call('HSET', task_key, 'pending_since', ARGV[1])
-        redis.call('HSET', task_key, 'status', 'pending')
+    if status ~= "retry" and status ~= "running" and status ~= "pending" and current_time > pending_since + period then
+        redis.call("LPUSH", KEYS[2], task_id)
+        redis.call("HSET", task_key, "pending_since", ARGV[1])
+        redis.call("HSET", task_key, "status", "pending")
     end
 end
 
