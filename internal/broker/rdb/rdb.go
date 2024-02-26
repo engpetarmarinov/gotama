@@ -112,18 +112,25 @@ var getAllTasksCmd = redis.NewScript(`
     local keys = redis.call('KEYS', KEYS[1])
     local sorted_keys = {}
     for i, key in ipairs(keys) do
-        local pending_since = redis.call('HGET', key, 'pending_since')
+        local created_at = redis.call('HGET', key, 'created_at')
         local msg = redis.call('HGET', key, 'msg')
-        sorted_keys[i] = {tonumber(pending_since) or 0, msg}
+        sorted_keys[i] = {tonumber(created_at) or 0, key , msg}
     end
-    table.sort(sorted_keys, function(a, b) return a[1] > b[1] end)
+    local function customSort(a, b)
+        if a[1] == b[1] then
+            return a[2] < b[2] -- Sort by key ASC
+        else
+            return a[1] > b[1] -- Sort by created_at DESC
+        end
+    end
+    table.sort(sorted_keys, customSort)
     
     local total_keys = #sorted_keys
     local start_index = ARGV[1] + 1
     local end_index = math.min(ARGV[1] + ARGV[2], total_keys)
     local paginated_keys = {}
     for i = start_index, end_index do
-        paginated_keys[i - start_index + 1] = sorted_keys[i][2]
+        paginated_keys[i - start_index + 1] = sorted_keys[i][3]
     end
     return {total_keys, paginated_keys}
 `)
@@ -216,6 +223,7 @@ redis.call("HSET", KEYS[1],
            "msg", ARGV[1],
            "status", "pending",
            "pending_since", ARGV[3],
+           "created_at", ARGV[3],
            "period", ARGV[4])
 redis.call("LPUSH", KEYS[2], ARGV[2])
 if ARGV[5] == "RECURRING" then
@@ -456,6 +464,20 @@ func (r *RDB) MarkTaskAsComplete(ctx context.Context, msg *task.Message) error {
 // -------
 // ARGV[1] -> current time in unix milli sec
 var enqueueScheduledTasksCmd = redis.NewScript(`
+local retry_task_ids = redis.call('LRANGE', KEYS[4], 0, -1)
+
+for _, task_id in ipairs(retry_task_ids) do
+    local task_key = KEYS[3] .. task_id
+    local status = redis.call('HGET', task_key, 'status')
+
+    if status ~= 'failed' and status ~= 'pending' then
+        -- Priorities with RPUSH
+        redis.call('RPUSH', KEYS[2], task_id)
+        redis.call('HSET', task_key, 'pending_since', ARGV[1])
+        redis.call('HSET', task_key, 'status', 'pending')
+    end
+end
+
 local scheduled_task_ids = redis.call('LRANGE', KEYS[1], 0, -1)
 
 for _, task_id in ipairs(scheduled_task_ids) do
@@ -466,22 +488,7 @@ for _, task_id in ipairs(scheduled_task_ids) do
     local current_time = tonumber(ARGV[1])
 
     if status ~= 'pending' and current_time > pending_since + period then
-        -- Priorities with RPUSH
-        redis.call('RPUSH', KEYS[2], task_id)
-        redis.call('HSET', task_key, 'pending_since', ARGV[1])
-        redis.call('HSET', task_key, 'status', 'pending')
-    end
-end
-
-local retry_task_ids = redis.call('LRANGE', KEYS[4], 0, -1)
-
-for _, task_id in ipairs(retry_task_ids) do
-    local task_key = KEYS[3] .. task_id
-    local status = redis.call('HGET', task_key, 'status')
-
-    if status ~= 'failed' and status ~= 'pending' then
-        -- Priorities with RPUSH
-        redis.call('RPUSH', KEYS[2], task_id)
+        redis.call('LPUSH', KEYS[2], task_id)
         redis.call('HSET', task_key, 'pending_since', ARGV[1])
         redis.call('HSET', task_key, 'status', 'pending')
     end
