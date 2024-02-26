@@ -7,8 +7,8 @@ for ((i=1; i<=10000; i++)); do
         "name": "email",
         "type": "once",
         "payload": {
-            "to": "test@smasher.com",
-            "title": "Reminder",
+            "to": "gotama@gotama.io",
+            "title": "Reminder '"$i"'",
             "body": "Take a break!"
         }
     }'

@@ -12,9 +12,9 @@ Simple scalable system that can schedule and execute tasks.
 ![architecture](./docs/assets/architecture.png)
 
 ## Why?
-* manager - dedicated manager to have the flexibility to add authentication, authorization with RBAC, service mesh with mTLS, etc.
-* broker - in order to be highly scalable and durable, a message broker implementation with redis and persistent storage is a solid choice  
-* workers - horizontally scaling by spawning multiple workers, so each of them can process tasks simultaneously from the message queue with pending tasks 
+* manager - RESTful API and a dedicated manager and scheduler with flexibility to add authentication, authorization with RBAC/ABAC, a service mesh with mTLS, etc.
+* broker - in order to be highly scalable and durable, a message broker implementation with redis and persistent storage is a solid choice.
+* workers - horizontally scaling by spawning multiple workers, so each of them can process tasks simultaneously from the message queue with pending tasks. 
 
 ## Run locally
 Prerequisites
@@ -36,30 +36,44 @@ go run cmd/gotama-worker/main.go&
 go run cmd/gotama-worker/main.go&
 ```
 ## RESTful API
-Add a task
+Add a recurring task:
 ```bash
 curl --location 'http://localhost:8080/api/v1/tasks' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "name": "email",
     "type": "recurring",
-    "period": "5s",
+    "period": "45m",
     "payload": {
         "to": "gotama@gotama.io",
-        "title": "Reminder",
+        "title": "Recurring Reminder",
         "body": "Take a break!"
     }
 }'
 ```
-Get a task
+Add a task once:
+```bash
+curl --location 'http://localhost:8080/api/v1/tasks' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "name": "email",
+    "type": "once",
+    "payload": {
+        "to": "gotama@gotama.io",
+        "title": "Single Reminder",
+        "body": "Take a break!"
+    }
+}'
+```
+Get a task:
 ```bash
 curl --location 'http://localhost:8080/api/v1/tasks/11ef259c-8523-42e4-8568-9d167dbba9da'
 ```
-Get a list of tasks
+Get a list of tasks with pagination:
 ```bash
 curl --location 'http://localhost:8080/api/v1/tasks?limit=100&offset=0'
 ```
-Update a task
+Update a task:
 ```bash
 curl --location --request PUT 'http://localhost:8080/api/v1/tasks/11ef259c-8523-42e4-8568-9d167dbba9da' \
 --header 'Content-Type: application/json' \
@@ -74,7 +88,7 @@ curl --location --request PUT 'http://localhost:8080/api/v1/tasks/11ef259c-8523-
     }
 }'
 ```
-Delete a task
+Delete a task:
 ```bash
 curl --location --request DELETE 'http://localhost:8080/api/v1/tasks/11ef259c-8523-42e4-8568-9d167dbba9da'
 ```
