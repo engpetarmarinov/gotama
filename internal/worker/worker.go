@@ -134,21 +134,22 @@ func (w *Worker) handleProcessTaskError(ctx context.Context, msg *task.Message, 
 	msg.Status = task.StatusFailed
 	msg.Error = err.Error()
 	msg.FailedAt = w.clock.Now()
+	msg.NumRetries = msg.NumRetries + 1
 	upErr := w.broker.UpdateTask(ctx, msg)
 	if upErr != nil {
-		slog.Error("error updating task", "err", upErr)
+		slog.Error("error updating task when handling task error", "err", upErr)
 	}
 
 	if msg.NumRetries < maxRetry {
 		scheduleErr := w.broker.RequeueTaskRetry(ctx, msg)
 		if scheduleErr != nil {
-			slog.Error("error scheduling retry", "err", upErr)
+			slog.Error("error scheduling retry", "err", scheduleErr)
 		}
 	} else {
 		//dead letter queue
-		scheduleErr := w.broker.RequeueTaskFailed(ctx, msg)
-		if scheduleErr != nil {
-			slog.Error("error scheduling retry", "err", upErr)
+		requeueFailedErr := w.broker.RequeueTaskFailed(ctx, msg)
+		if requeueFailedErr != nil {
+			slog.Error("error scheduling retry", "err", requeueFailedErr)
 		}
 	}
 }

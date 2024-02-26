@@ -13,12 +13,15 @@ type Name int
 const (
 	NameUnknown Name = iota
 	NameEmail
+	NameFoo
 )
 
 func (n Name) String() string {
 	switch n {
 	case NameEmail:
 		return "EMAIL"
+	case NameFoo:
+		return "FOO"
 	}
 	panic("task name unknown")
 }
@@ -27,6 +30,8 @@ func GetName(name string) (Name, error) {
 	switch strings.ToUpper(name) {
 	case "EMAIL":
 		return NameEmail, nil
+	case "FOO":
+		return NameFoo, nil
 	}
 	return NameUnknown, errors.New("task name unknown")
 }
