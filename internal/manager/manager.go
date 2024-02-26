@@ -12,34 +12,29 @@ import (
 	"net/http"
 )
 
-type API interface {
-	Run()
-	Shutdown()
-}
-
 type Manager struct {
-	ctx    context.Context
-	server *http.Server
-	broker broker.Broker
-	config config.API
-	cancel context.CancelFunc
+	server    *http.Server
+	scheduler base.Service
+	broker    broker.Broker
+	config    config.API
 }
 
 func NewManager(broker broker.Broker, config config.API) *Manager {
-	ctx, cancel := context.WithCancel(context.Background())
 	return &Manager{
-		ctx:    ctx,
-		broker: broker,
-		config: config,
-		cancel: cancel,
+		broker:    broker,
+		config:    config,
+		scheduler: newScheduler(broker, config),
 	}
 }
 
 func (m *Manager) Shutdown() error {
-	if err := m.server.Shutdown(m.ctx); err != nil {
+	slog.Info("manager shutting down...")
+	if err := m.scheduler.Shutdown(); err != nil {
 		return err
 	}
-	m.cancel()
+	if err := m.server.Shutdown(context.Background()); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -58,7 +53,7 @@ func (m *Manager) Run() {
 		}
 	}(router)
 
-	newScheduler(m.ctx, m.broker, m.config).Run()
+	m.scheduler.Run()
 }
 
 func writeSuccessResponse(w http.ResponseWriter, data interface{}) {

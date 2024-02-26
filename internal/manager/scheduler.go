@@ -8,21 +8,20 @@ import (
 	"time"
 )
 
-type schedulerAPI interface {
-	Run()
-}
-
 type scheduler struct {
 	ctx    context.Context
 	broker broker.Broker
 	config config.API
+	cancel context.CancelFunc
 }
 
-func newScheduler(ctx context.Context, broker broker.Broker, config config.API) *scheduler {
+func newScheduler(broker broker.Broker, config config.API) *scheduler {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &scheduler{
 		ctx:    ctx,
 		broker: broker,
 		config: config,
+		cancel: cancel,
 	}
 }
 
@@ -34,9 +33,8 @@ func (s *scheduler) Run() {
 		for {
 			select {
 			case <-s.ctx.Done():
-				//TODO: graceful shutdown?
-				slog.Info("scheduler received done")
-				break
+				slog.Info("scheduler goroutine received done")
+				return
 			case <-tick:
 				slog.Info("scheduler checking for scheduled tasks...")
 				err := s.broker.EnqueueScheduledTasks(s.ctx)
@@ -46,4 +44,10 @@ func (s *scheduler) Run() {
 			}
 		}
 	}()
+}
+
+func (s *scheduler) Shutdown() error {
+	slog.Info("scheduler shutting down...")
+	s.cancel()
+	return nil
 }

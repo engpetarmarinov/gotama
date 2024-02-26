@@ -18,11 +18,6 @@ import (
 
 var maxRetry = 3
 
-type API interface {
-	Run()
-	Shutdown()
-}
-
 type Worker struct {
 	wg     *sync.WaitGroup
 	broker broker.Broker
@@ -77,7 +72,7 @@ func (w *Worker) Run() {
 }
 
 func (w *Worker) Shutdown() error {
-	slog.Info("worker graceful shutting down...")
+	slog.Info("worker shutting down...")
 	w.cancel()
 	w.wg.Wait()
 	slog.Info("worker gracefully shut down all goroutines")
