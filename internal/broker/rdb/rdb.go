@@ -391,6 +391,7 @@ var scheduleTaskRetryCmd = redis.NewScript(`
 if redis.call("LREM", KEYS[1], 0, ARGV[1]) == 0 then
   return redis.error_reply("NOT FOUND")
 end
+redis.call("LREM", KEYS[2], 0, ARGV[1])
 redis.call("LPUSH", KEYS[2], ARGV[1])
 redis.call("HSET", KEYS[3], "status", "retry")
 return redis.status_reply("OK")`)
