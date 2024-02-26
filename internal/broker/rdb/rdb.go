@@ -109,23 +109,23 @@ const (
 // Output:
 // Returns {total_keys, paginated_keys}
 var getAllTasksCmd = redis.NewScript(`
-	local keys = redis.call('KEYS', KEYS[1])
-	local sorted_keys = {}
-	for i, key in ipairs(keys) do
-		local pending_since = redis.call('HGET', key, 'pending_since')
-		local msg = redis.call('HGET', key, 'msg')
-		sorted_keys[i] = {tonumber(pending_since) or 0, msg}
-	end
-	table.sort(sorted_keys, function(a, b) return a[1] > b[1] end)
-	
-	local total_keys = #sorted_keys
-	local start_index = ARGV[1] + 1
-	local end_index = math.min(ARGV[1] + ARGV[2], total_keys)
-	local paginated_keys = {}
-	for i = start_index, end_index do
-		paginated_keys[i - start_index + 1] = sorted_keys[i][2]
-	end
-	return {total_keys, paginated_keys}
+    local keys = redis.call('KEYS', KEYS[1])
+    local sorted_keys = {}
+    for i, key in ipairs(keys) do
+        local pending_since = redis.call('HGET', key, 'pending_since')
+        local msg = redis.call('HGET', key, 'msg')
+        sorted_keys[i] = {tonumber(pending_since) or 0, msg}
+    end
+    table.sort(sorted_keys, function(a, b) return a[1] > b[1] end)
+    
+    local total_keys = #sorted_keys
+    local start_index = ARGV[1] + 1
+    local end_index = math.min(ARGV[1] + ARGV[2], total_keys)
+    local paginated_keys = {}
+    for i = start_index, end_index do
+        paginated_keys[i - start_index + 1] = sorted_keys[i][2]
+    end
+    return {total_keys, paginated_keys}
 `)
 
 // GetAllTasks fetches tasks with a given offset.
@@ -201,8 +201,8 @@ func (r *RDB) GetTask(ctx context.Context, taskID string) (*task.Message, error)
 // --
 // ARGV[1] -> task message data
 // ARGV[2] -> task ID
-// ARGV[3] -> current unix time in nano sec
-// ARGV[4] -> period, e.g. 5s or empty
+// ARGV[3] -> current unix time in milli sec
+// ARGV[4] -> period in milli sec
 // ARGV[5] -> type, RECURRING or ONCE
 //
 // Output:
@@ -219,7 +219,7 @@ redis.call("HSET", KEYS[1],
            "period", ARGV[4])
 redis.call("LPUSH", KEYS[2], ARGV[2])
 if ARGV[5] == "RECURRING" then
-	redis.call("LPUSH", KEYS[3], ARGV[2])
+    redis.call("LPUSH", KEYS[3], ARGV[2])
 end
 return 1
 `)
@@ -241,8 +241,8 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 	argv := []interface{}{
 		encoded,
 		msg.ID,
-		r.clock.Now().UnixNano(),
-		msg.Period.String(),
+		r.clock.Now().UnixMilli(),
+		msg.Period.Milliseconds(),
 		msg.Type.String(),
 	}
 	slog.Info("Adding task", "id", keys[0], "queue", keys[1])
@@ -267,13 +267,12 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 // Returns an encoded TaskMessage.
 var dequeueTaskCmd = redis.NewScript(`
 if redis.call("EXISTS", KEYS[1]) == 1 then
-	local id = redis.call("RPOPLPUSH", KEYS[1], KEYS[2])
-	if id then
-		local key = ARGV[1] .. id
-		redis.call("HSET", key, "status", "running")
-		redis.call("HDEL", key, "pending_since")
-		return redis.call("HGET", key, "msg")
-	end
+    local id = redis.call("RPOPLPUSH", KEYS[1], KEYS[2])
+    if id then
+        local key = ARGV[1] .. id
+        redis.call("HSET", key, "status", "running")
+        return redis.call("HGET", key, "msg")
+    end
 end
 return nil`)
 
@@ -312,6 +311,7 @@ func (r *RDB) DequeueTask(ctx context.Context, qname string) (*task.Message, err
 // KEYS[1] -> gotama:<qname>:t:<task_id>
 // --
 // ARGV[1] -> task message data
+// ARGV[2] -> period in milli s
 //
 // Output:
 // Returns 1 if successfully enqueued
@@ -321,7 +321,8 @@ if redis.call("EXISTS", KEYS[1]) == 0 then
 	return 0
 end
 redis.call("HSET", KEYS[1],
-           "msg", ARGV[1])
+           "msg", ARGV[1],
+           "period", ARGV[2])
 return 1
 `)
 
@@ -336,6 +337,7 @@ func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
 	}
 	argv := []interface{}{
 		encoded,
+		msg.Period.Milliseconds(),
 	}
 	slog.Info("Updating task", "id", keys[0])
 	n, err := r.runScriptWithErrorCode(ctx, updateTaskCmd, keys, argv...)
@@ -364,6 +366,7 @@ end
 return redis.status_reply("OK")
 `)
 
+// RemoveTask deletes the task from all queues and the task itself
 func (r *RDB) RemoveTask(ctx context.Context, taskID string) error {
 	keys := []string{
 		TaskKey(task.QueueDefault, taskID),
@@ -392,7 +395,7 @@ redis.call("LPUSH", KEYS[2], ARGV[1])
 redis.call("HSET", KEYS[3], "status", "retry")
 return redis.status_reply("OK")`)
 
-// ScheduleTaskRetry moves the task from running queue to the retry queue.
+// RequeueTaskRetry moves the task from running queue to the retry queue.
 func (r *RDB) RequeueTaskRetry(ctx context.Context, msg *task.Message) error {
 	keys := []string{
 		RunningKey(msg.Queue),
@@ -443,4 +446,59 @@ func (r *RDB) MarkTaskAsComplete(ctx context.Context, msg *task.Message) error {
 		TaskKey(msg.Queue, msg.ID),
 	}
 	return r.runScript(ctx, markTaskAsCompleteCmd, keys, msg.ID)
+}
+
+// KEYS[1] -> gotama:<qname>:scheduled
+// KEYS[2] -> gotama:<qname>:pending
+// KEYS[3] -> gotama:<qname>:t:
+// KEYS[4] -> gotama:<qname>:retry
+// -------
+// ARGV[1] -> current time in unix milli sec
+var enqueueScheduledTasksCmd = redis.NewScript(`
+local scheduled_task_ids = redis.call('LRANGE', KEYS[1], 0, -1)
+
+for _, task_id in ipairs(scheduled_task_ids) do
+    local task_key = KEYS[3] .. task_id
+    local pending_since = tonumber(redis.call('HGET', task_key, 'pending_since'))
+    local status = redis.call('HGET', task_key, 'status')
+    local period = tonumber(redis.call('HGET', task_key, 'period'))
+    local current_time = tonumber(ARGV[1])
+
+    if status ~= 'pending' and current_time > pending_since + period then
+        -- Priorities with RPUSH
+        redis.call('RPUSH', KEYS[2], task_id)
+        redis.call('HSET', task_key, 'pending_since', ARGV[1])
+        redis.call('HSET', task_key, 'status', 'pending')
+    end
+end
+
+local retry_task_ids = redis.call('LRANGE', KEYS[4], 0, -1)
+
+for _, task_id in ipairs(retry_task_ids) do
+    local task_key = KEYS[3] .. task_id
+    local status = redis.call('HGET', task_key, 'status')
+
+    if status ~= 'failed' and status ~= 'pending' then
+        -- Priorities with RPUSH
+        redis.call('RPUSH', KEYS[2], task_id)
+        redis.call('HSET', task_key, 'pending_since', ARGV[1])
+        redis.call('HSET', task_key, 'status', 'pending')
+    end
+end
+
+return redis.status_reply("OK")`)
+
+// EnqueueScheduledTasks checks for scheduled tasks and pass them to the pending queue
+func (r *RDB) EnqueueScheduledTasks(ctx context.Context) error {
+	keys := []string{
+		ScheduledKey(task.QueueDefault),
+		PendingKey(task.QueueDefault),
+		TaskKey(task.QueueDefault, ""),
+		RetryKey(task.QueueDefault),
+	}
+
+	argv := []interface{}{
+		r.clock.Now().UnixMilli(),
+	}
+	return r.runScript(ctx, enqueueScheduledTasksCmd, keys, argv)
 }

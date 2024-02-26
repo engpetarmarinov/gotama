@@ -147,13 +147,13 @@ func (w *Worker) handleProcessTaskError(ctx context.Context, msg *task.Message, 
 	if msg.NumRetries < maxRetry {
 		scheduleErr := w.broker.RequeueTaskRetry(ctx, msg)
 		if scheduleErr != nil {
-			slog.Error("error schedule retry", "err", upErr)
+			slog.Error("error scheduling retry", "err", upErr)
 		}
 	} else {
 		//dead letter queue
 		scheduleErr := w.broker.RequeueTaskFailed(ctx, msg)
 		if scheduleErr != nil {
-			slog.Error("error schedule retry", "err", upErr)
+			slog.Error("error scheduling retry", "err", upErr)
 		}
 	}
 }

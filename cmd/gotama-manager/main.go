@@ -41,6 +41,6 @@ func main() {
 
 	err = mgr.Shutdown()
 	if err != nil {
-		slog.Error("error shutting down broker", "error", err)
+		slog.Error("error shutting down manager", "error", err)
 	}
 }

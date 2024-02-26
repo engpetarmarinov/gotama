@@ -17,4 +17,5 @@ type Broker interface {
 	RequeueTaskRetry(ctx context.Context, msg *task.Message) error
 	RequeueTaskFailed(ctx context.Context, msg *task.Message) error
 	MarkTaskAsComplete(ctx context.Context, msg *task.Message) error
+	EnqueueScheduledTasks(ctx context.Context) error
 }

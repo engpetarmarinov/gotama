@@ -37,7 +37,7 @@ func main() {
 	slog.Info("graceful shutdown...")
 	err := wrk.Shutdown()
 	if err != nil {
-		slog.Error("error shutting down broker", "error", err)
+		slog.Error("error shutting down worker", "error", err)
 	}
 
 	err = broker.Close()

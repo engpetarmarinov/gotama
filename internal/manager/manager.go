@@ -22,19 +22,24 @@ type Manager struct {
 	server *http.Server
 	broker broker.Broker
 	config config.API
+	cancel context.CancelFunc
 }
 
 func NewManager(broker broker.Broker, config config.API) *Manager {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Manager{
-		ctx:    context.Background(),
+		ctx:    ctx,
 		broker: broker,
 		config: config,
+		cancel: cancel,
 	}
 }
+
 func (m *Manager) Shutdown() error {
 	if err := m.server.Shutdown(m.ctx); err != nil {
 		return err
 	}
+	m.cancel()
 	return nil
 }
 
@@ -52,6 +57,8 @@ func (m *Manager) Run() {
 			log.Fatal(err)
 		}
 	}(router)
+
+	newScheduler(m.ctx, m.broker, m.config).Run()
 }
 
 func writeSuccessResponse(w http.ResponseWriter, data interface{}) {
