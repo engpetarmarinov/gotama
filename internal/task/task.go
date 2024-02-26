@@ -48,13 +48,16 @@ type Request struct {
 }
 
 type Response struct {
-	ID      string      `json:"ID"`
-	Status  string      `json:"status"`
-	Name    string      `json:"name"`
-	Type    string      `json:"type"`
-	Period  string      `json:"period"`
-	Payload interface{} `json:"payload"`
-	Error   string      `json:"error"`
+	ID          string      `json:"ID"`
+	Status      string      `json:"status"`
+	Name        string      `json:"name"`
+	Type        string      `json:"type"`
+	Period      string      `json:"period"`
+	Payload     interface{} `json:"payload"`
+	Error       *string     `json:"error,omitempty"`
+	CreatedAt   string      `json:"created_at"`
+	CompletedAt *string     `json:"completed_at,omitempty"`
+	FailedAt    *string     `json:"failed_at,omitempty"`
 }
 
 type Status int
@@ -116,10 +119,10 @@ type Message struct {
 	Period      time.Duration
 	Payload     []byte
 	CreatedAt   time.Time
-	CompletedAt time.Time
-	FailedAt    time.Time
+	CompletedAt *time.Time
+	FailedAt    *time.Time
 	NumRetries  int
-	Error       string
+	Error       *string
 }
 
 func NewMessageFromRequest(req *Request) (*Message, error) {
@@ -155,10 +158,10 @@ func NewMessageFromRequest(req *Request) (*Message, error) {
 		Period:      period,
 		Payload:     req.Payload,
 		CreatedAt:   time.Now(),
-		CompletedAt: time.Time{},
-		FailedAt:    time.Time{},
+		CompletedAt: nil,
+		FailedAt:    nil,
 		NumRetries:  0,
-		Error:       "",
+		Error:       nil,
 	}, nil
 }
 
@@ -169,14 +172,29 @@ func NewResponseFromMessage(msg *Message) (*Response, error) {
 		return nil, err
 	}
 
+	var completedAt *string
+	if msg.CompletedAt != nil {
+		date := msg.CompletedAt.Format(time.RFC3339)
+		completedAt = &date
+	}
+
+	var failedAt *string
+	if msg.FailedAt != nil {
+		date := msg.FailedAt.Format(time.RFC3339)
+		failedAt = &date
+	}
+
 	return &Response{
-		ID:      msg.ID,
-		Status:  msg.Status.String(),
-		Name:    msg.Name,
-		Type:    msg.Type.String(),
-		Period:  msg.Period.String(),
-		Payload: payload,
-		Error:   msg.Error,
+		ID:          msg.ID,
+		Status:      msg.Status.String(),
+		Name:        msg.Name,
+		Type:        msg.Type.String(),
+		Period:      msg.Period.String(),
+		Payload:     payload,
+		Error:       msg.Error,
+		CreatedAt:   msg.CreatedAt.Format(time.RFC3339),
+		CompletedAt: completedAt,
+		FailedAt:    failedAt,
 	}, nil
 }
 

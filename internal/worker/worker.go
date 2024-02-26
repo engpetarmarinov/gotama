@@ -116,7 +116,8 @@ func (w *Worker) exec(ctx context.Context) error {
 	}
 
 	msg.Status = task.StatusSucceeded
-	msg.CompletedAt = w.clock.Now()
+	now := w.clock.Now()
+	msg.CompletedAt = &now
 	//Reset NumRetries for recurring tasks
 	if msg.Type == task.TypeRecurring {
 		msg.NumRetries = 0
@@ -132,8 +133,10 @@ func (w *Worker) exec(ctx context.Context) error {
 
 func (w *Worker) handleProcessTaskError(ctx context.Context, msg *task.Message, err error) {
 	msg.Status = task.StatusFailed
-	msg.Error = err.Error()
-	msg.FailedAt = w.clock.Now()
+	errStr := err.Error()
+	msg.Error = &errStr
+	now := w.clock.Now()
+	msg.FailedAt = &now
 	msg.NumRetries = msg.NumRetries + 1
 	upErr := w.broker.UpdateTask(ctx, msg)
 	if upErr != nil {

@@ -317,9 +317,12 @@ func (r *RDB) DequeueTask(ctx context.Context, qname string) (*task.Message, err
 //
 // Input:
 // KEYS[1] -> gotama:<qname>:t:<task_id>
+// KEYS[2] -> gotama:<qname>:scheduled
 // --
 // ARGV[1] -> task message data
 // ARGV[2] -> period in milli s
+// ARGV[3] -> task type - ONCE or RECURRING
+// ARGV[4] -> task id
 //
 // Output:
 // Returns 1 if successfully enqueued
@@ -331,6 +334,10 @@ end
 redis.call("HSET", KEYS[1],
            "msg", ARGV[1],
            "period", ARGV[2])
+redis.call("LREM", KEYS[2], 0, ARGV[4])
+if ARGV[3] == "RECURRING" then
+	redis.call("LPUSH", KEYS[2], ARGV[4])
+end
 return 1
 `)
 
@@ -342,10 +349,13 @@ func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
 	}
 	keys := []string{
 		TaskKey(msg.Queue, msg.ID),
+		ScheduledKey(msg.Queue),
 	}
 	argv := []interface{}{
 		encoded,
 		msg.Period.Milliseconds(),
+		msg.Type.String(),
+		msg.ID,
 	}
 	slog.Info("Updating task", "id", keys[0])
 	n, err := r.runScriptWithErrorCode(ctx, updateTaskCmd, keys, argv...)
