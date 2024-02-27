@@ -1,8 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"github.com/engpetarmarinov/gotama/internal/cli/cmd"
+)
 
 func main() {
-	//TODO: implement gotama-cli client
-	fmt.Println("gotama-cli")
+	cmd.Run()
 }
