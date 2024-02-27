@@ -497,7 +497,7 @@ for _, task_id in ipairs(scheduled_task_ids) do
     local period = tonumber(redis.call("HGET", task_key, "period"))
     local current_time = tonumber(ARGV[1])
 
-    if status ~= "retry" and status ~= "running" and status ~= "pending" and current_time > pending_since + period then
+    if status ~= "failed" and status ~= "retry" and status ~= "running" and status ~= "pending" and current_time > pending_since + period then
         redis.call("LPUSH", KEYS[2], task_id)
         redis.call("HSET", task_key, "pending_since", ARGV[1])
         redis.call("HSET", task_key, "status", "pending")
