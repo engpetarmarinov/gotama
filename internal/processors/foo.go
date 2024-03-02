@@ -31,7 +31,7 @@ func (ep *FooProcessor) ProcessTask(ctx context.Context, t *task.Message) error 
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return errors.New("foo task interrupted by done")
 		case <-tick:
 			return errors.New("foo error")
 		default:

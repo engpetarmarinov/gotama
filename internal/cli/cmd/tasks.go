@@ -14,7 +14,7 @@ var tasksCmd = &cobra.Command{
 	Use:   "tasks <command> [flags]",
 	Short: "Manage tasks",
 	Example: `
-		$ gotama-cli tasks list --limit=10 --offset=0`,
+$ gotama-cli tasks list --limit=10 --offset=0`,
 }
 
 var tasksListCmd = &cobra.Command{

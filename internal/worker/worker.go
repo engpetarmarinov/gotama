@@ -43,12 +43,11 @@ func (w *Worker) Run() {
 		panic(err.Error())
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	w.cancel = cancel
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	w.cancel = workerCancel
 
 	for i := 0; i < workerGoroutines; i++ {
 		w.wg.Add(1)
-		//TODO: add heartbeat and deadline?
 		go func(ctx context.Context, wg *sync.WaitGroup) {
 			defer wg.Done()
 			tick := time.Tick(time.Second)
@@ -67,7 +66,7 @@ func (w *Worker) Run() {
 				}
 			}
 
-		}(ctx, w.wg)
+		}(workerCtx, w.wg)
 	}
 }
 
@@ -109,7 +108,14 @@ func (w *Worker) exec(ctx context.Context) error {
 		return err
 	}
 
-	err = processor.ProcessTask(ctx, msg)
+	taskDeadline, err := time.ParseDuration(w.config.Get("WORKER_TASK_DEADLINE"))
+	if err != nil {
+		return err
+	}
+
+	taskCtx, taskCancel := context.WithDeadline(context.Background(), w.clock.Now().Add(taskDeadline))
+	defer taskCancel()
+	err = processor.ProcessTask(taskCtx, msg)
 	if err != nil {
 		w.handleProcessTaskError(ctx, msg, err)
 		return err

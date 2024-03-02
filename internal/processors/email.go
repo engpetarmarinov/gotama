@@ -31,9 +31,10 @@ func (ep *EmailProcessor) ProcessTask(ctx context.Context, t *task.Message) erro
 	tick := time.Tick(time.Second * 2)
 	for {
 		select {
+		case <-ctx.Done():
+			return errors.New("email task interrupted by done")
 		case <-tick:
 			slog.Info("Email sent", "to", payload.To, "title", payload.Title, "body", payload.Body)
-			//return errors.New("test error")
 			return nil
 		default:
 			_ = rand.Int() * rand.Int()
