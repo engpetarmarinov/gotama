@@ -23,7 +23,10 @@ var (
 const baseUrl = "http://localhost:8080/api/v1/"
 
 func get(uri string, params url.Values) (*base.Response, error) {
-	apiURL := uri + "?" + params.Encode()
+	apiURL := uri
+	if params != nil {
+		apiURL = apiURL + "?" + params.Encode()
+	}
 
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -60,7 +63,7 @@ func GetTasks(offset int, limit int) ([]task.Response, error) {
 	}
 
 	if rsp.Error != nil {
-		return nil, errors.New(fmt.Sprintf("error received: code: %s, message: %s", rsp.Error.Code, rsp.Error.Message))
+		return nil, errors.New(fmt.Sprintf("error received: code: %d, message: %s", rsp.Error.Code, rsp.Error.Message))
 	}
 
 	data, ok := rsp.Data.(map[string]interface{})
@@ -80,4 +83,34 @@ func GetTasks(offset int, limit int) ([]task.Response, error) {
 	}
 
 	return tasks, nil
+}
+
+func GetTask(id string) ([]task.Response, error) {
+	uri := fmt.Sprintf("%stasks/%s", baseUrl, id)
+	rsp, err := get(uri, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if rsp.Error != nil {
+		return nil, errors.New(fmt.Sprintf("error received: code: %d, message: %s", rsp.Error.Code, rsp.Error.Message))
+	}
+
+	data, ok := rsp.Data.(map[string]interface{})
+	if !ok {
+		return nil, err
+	}
+
+	var t task.Response
+	tasksBytes, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(tasksBytes, &t)
+	if err != nil {
+		return nil, err
+	}
+
+	return []task.Response{t}, nil
 }
