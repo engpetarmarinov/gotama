@@ -19,7 +19,7 @@ $ gotama-cli tasks list --limit=10 --offset=0`,
 }
 
 var tasksListCmd = &cobra.Command{
-	Use:     "list --limit=<limit> --offset=<offset> [flags]",
+	Use:     "list [id] [flags]",
 	Aliases: []string{"ls"},
 	Short:   "List tasks",
 	Long: `
@@ -29,8 +29,26 @@ var tasksListCmd = &cobra.Command{
 	Example: `
 $ gotama-cli tasks list
 $ gotama-cli tasks list --limit=10 --offset=0
-$ gotama-cli tasks list --id=aac6ed79-4fc6-4b14-8614-889a8236ba54`,
-	Run: tasksList,
+$ gotama-cli tasks list aac6ed79-4fc6-4b14-8614-889a8236ba54`,
+	Args: cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			limit, err := cmd.Flags().GetInt("limit")
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			offset, err := cmd.Flags().GetInt("offset")
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			listTasks(limit, offset)
+		} else {
+			id := args[0]
+			listTask(id)
+		}
+	},
 }
 
 func init() {
@@ -38,43 +56,30 @@ func init() {
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksListCmd.Flags().Int("limit", 100, "page size")
 	tasksListCmd.Flags().Int("offset", 0, "offset size")
-	tasksListCmd.Flags().String("id", "", "task id")
 	//TODO: implement the rest of the API
 }
 
-func tasksList(cmd *cobra.Command, args []string) {
-	id, err := cmd.Flags().GetString("id")
+func listTasks(limit int, offset int) {
+	tasks, err := cli.GetTasks(offset, limit)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	var tasks []task.Response
-	if id != "" {
-		tasks, err = cli.GetTask(id)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	} else {
-		limit, err := cmd.Flags().GetInt("limit")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		offset, err := cmd.Flags().GetInt("offset")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+	printTasksTable(tasks)
+}
 
-		tasks, err = cli.GetTasks(offset, limit)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+func listTask(id string) {
+	tasks, err := cli.GetTask(id)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
+	printTasksTable(tasks)
+}
+
+func printTasksTable(tasks []task.Response) {
 	printTable(
 		[]string{
 			"ID",
