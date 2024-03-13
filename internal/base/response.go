@@ -1,7 +1,7 @@
 package base
 
 type Response struct {
-	Data  interface{}    `json:"data,omitempty"`
+	Data  any            `json:"data,omitempty"`
 	Error *ResponseError `json:"error,omitempty"`
 }
 

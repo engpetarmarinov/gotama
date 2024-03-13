@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/engpetarmarinov/gotama/internal/base"
 	"github.com/engpetarmarinov/gotama/internal/cli"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/task"
 	"github.com/spf13/cobra"
 	"io"
@@ -35,12 +36,12 @@ $ gotama-cli tasks list aac6ed79-4fc6-4b14-8614-889a8236ba54`,
 		if len(args) == 0 {
 			limit, err := cmd.Flags().GetInt("limit")
 			if err != nil {
-				fmt.Println(err)
+				logger.Error("Error", "error", err)
 				os.Exit(1)
 			}
 			offset, err := cmd.Flags().GetInt("offset")
 			if err != nil {
-				fmt.Println(err)
+				logger.Error("Error", "error", err)
 				os.Exit(1)
 			}
 			listTasks(limit, offset)
@@ -62,7 +63,7 @@ func init() {
 func listTasks(limit int, offset int) {
 	tasks, err := cli.GetTasks(offset, limit)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error("Error", "error", err)
 		os.Exit(1)
 	}
 
@@ -72,7 +73,7 @@ func listTasks(limit int, offset int) {
 func listTask(id string) {
 	tasks, err := cli.GetTask(id)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error("Error", "error", err)
 		os.Exit(1)
 	}
 

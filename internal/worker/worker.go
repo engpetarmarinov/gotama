@@ -10,7 +10,6 @@ import (
 	"github.com/engpetarmarinov/gotama/internal/processors"
 	"github.com/engpetarmarinov/gotama/internal/task"
 	"github.com/engpetarmarinov/gotama/internal/timeutil"
-	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
@@ -61,7 +60,7 @@ func (w *Worker) Run() {
 					if errors.Is(err, base.ErrorNoTasksInQueue) {
 						logger.Info("no tasks in queue")
 					} else if err != nil {
-						logger.Error("worker exec error", "err", err.Error())
+						logger.Error("worker exec error", "error", err)
 					}
 				}
 			}
@@ -82,8 +81,7 @@ func (w *Worker) exec(ctx context.Context) error {
 	//handle eventual panic in processors, we don't want the worker to stop
 	defer func() {
 		if r := recover(); r != nil {
-			errMsg := string(debug.Stack())
-			logger.Error("recovering from panic. stack trace:\n%s", errMsg)
+			logger.Error("recovering from panic", "error", r)
 		}
 	}()
 
@@ -146,19 +144,19 @@ func (w *Worker) handleProcessTaskError(ctx context.Context, msg *task.Message, 
 	msg.NumRetries = msg.NumRetries + 1
 	upErr := w.broker.UpdateTask(ctx, msg)
 	if upErr != nil {
-		logger.Error("error updating task when handling task error", "err", upErr)
+		logger.Error("error updating task when handling task error", "error", upErr)
 	}
 
 	if msg.NumRetries < maxRetry {
 		scheduleErr := w.broker.RequeueTaskRetry(ctx, msg)
 		if scheduleErr != nil {
-			logger.Error("error scheduling retry", "err", scheduleErr)
+			logger.Error("error scheduling retry", "error", scheduleErr)
 		}
 	} else {
 		//dead letter queue
 		requeueFailedErr := w.broker.RequeueTaskFailed(ctx, msg)
 		if requeueFailedErr != nil {
-			logger.Error("error scheduling retry", "err", requeueFailedErr)
+			logger.Error("error scheduling retry", "error", requeueFailedErr)
 		}
 	}
 }

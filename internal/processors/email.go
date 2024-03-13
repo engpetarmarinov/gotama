@@ -23,8 +23,7 @@ type EmailProcessor struct {
 func (ep *EmailProcessor) ProcessTask(ctx context.Context, t *task.Message) error {
 	var payload EmailPayload
 	if err := json.Unmarshal(t.Payload, &payload); err != nil {
-		logger.Error("error unmarshalling email payload", "err", t.Payload)
-		return fmt.Errorf("error unmarshalling email payload %s", err.Error())
+		return fmt.Errorf("error unmarshalling email payload %w", err)
 	}
 	logger.Info("Sending an email", "to", payload.To, "title", payload.Title, "body", payload.Body)
 	//simulate dummy load

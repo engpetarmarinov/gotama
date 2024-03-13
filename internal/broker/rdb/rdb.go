@@ -31,14 +31,14 @@ func (r *RDB) Close() error {
 	return r.client.Close()
 }
 
-func (r *RDB) runScript(ctx context.Context, script *redis.Script, keys []string, args ...interface{}) error {
+func (r *RDB) runScript(ctx context.Context, script *redis.Script, keys []string, args ...any) error {
 	if err := script.Run(ctx, r.client, keys, args...).Err(); err != nil {
 		return errors.New(fmt.Sprintf("redis eval error: %v", err))
 	}
 	return nil
 }
 
-func (r *RDB) runScriptWithErrorCode(ctx context.Context, script *redis.Script, keys []string, args ...interface{}) (int64, error) {
+func (r *RDB) runScriptWithErrorCode(ctx context.Context, script *redis.Script, keys []string, args ...any) (int64, error) {
 	res, err := script.Run(ctx, r.client, keys, args...).Result()
 	if err != nil {
 		return 0, errors.New(fmt.Sprintf("redis eval error: %v", err))
@@ -101,30 +101,30 @@ func RetryKey(qname string) string {
 // Output:
 // Returns {total_keys, paginated_keys}
 var getAllTasksCmd = redis.NewScript(`
-    local keys = redis.call("KEYS", KEYS[1])
-    local sorted_keys = {}
-    for i, key in ipairs(keys) do
-        local created_at = redis.call("HGET", key, "created_at")
-        local msg = redis.call("HGET", key, "msg")
-        sorted_keys[i] = {tonumber(created_at) or 0, key , msg}
-    end
-    local function customSort(a, b)
-        if a[1] == b[1] then
-            return a[2] < b[2] -- Sort by key ASC
-        else
-            return a[1] > b[1] -- Sort by created_at DESC
-        end
-    end
-    table.sort(sorted_keys, customSort)
-    
-    local total_keys = #sorted_keys
-    local start_index = ARGV[1] + 1
-    local end_index = math.min(ARGV[1] + ARGV[2], total_keys)
-    local paginated_keys = {}
-    for i = start_index, end_index do
-        paginated_keys[i - start_index + 1] = sorted_keys[i][3]
-    end
-    return {total_keys, paginated_keys}
+local keys = redis.call("KEYS", KEYS[1])
+local sorted_keys = {}
+for i, key in ipairs(keys) do
+	local created_at = redis.call("HGET", key, "created_at")
+	local msg = redis.call("HGET", key, "msg")
+	sorted_keys[i] = {tonumber(created_at) or 0, key , msg}
+end
+local function customSort(a, b)
+	if a[1] == b[1] then
+		return a[2] < b[2] -- Sort by key ASC
+	else
+		return a[1] > b[1] -- Sort by created_at DESC
+	end
+end
+table.sort(sorted_keys, customSort)
+
+local total_keys = #sorted_keys
+local start_index = ARGV[1] + 1
+local end_index = math.min(ARGV[1] + ARGV[2], total_keys)
+local paginated_keys = {}
+for i = start_index, end_index do
+	paginated_keys[i - start_index + 1] = sorted_keys[i][3]
+end
+return {total_keys, paginated_keys}
 `)
 
 // GetAllTasks fetches tasks with a given offset.
@@ -132,7 +132,7 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 	keys := []string{
 		TaskKey(task.QueueDefault, "*"),
 	}
-	argv := []interface{}{
+	argv := []any{
 		offset,
 		limit,
 	}
@@ -142,7 +142,7 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 	if err != nil {
 		return 0, tasks, errors.New(fmt.Sprintf("redis eval error: %v", err))
 	}
-	parsedRes, ok := res.([]interface{})
+	parsedRes, ok := res.([]any)
 	if !ok {
 		return 0, tasks, errors.New(fmt.Sprintf("unexpected return value from Lua script: %v", res))
 	}
@@ -152,7 +152,7 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 		return 0, tasks, errors.New(fmt.Sprintf("unexpected return total_keys from Lua script: %v", parsedRes))
 	}
 
-	encodedMsgs, ok := parsedRes[1].([]interface{})
+	encodedMsgs, ok := parsedRes[1].([]any)
 	if !ok {
 		return 0, tasks, errors.New(fmt.Sprintf("unexpected return paginated_keys from Lua script: %v", parsedRes))
 	}
@@ -164,7 +164,7 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 		}
 		msg, err := task.DecodeMessage(encodedStr)
 		if err != nil {
-			logger.Error("Error decoding msg", "err", err)
+			logger.Error("Error decoding msg", "error", err)
 			return 0, tasks, err
 		}
 		tasks = append(tasks, msg)
@@ -184,7 +184,7 @@ func (r *RDB) GetTask(ctx context.Context, taskID string) (*task.Message, error)
 	}
 	msg, err := task.DecodeMessage(encoded)
 	if err != nil {
-		logger.Error("Error decoding msg", "err", err)
+		logger.Error("Error decoding msg", "error", err)
 		return nil, err
 	}
 
@@ -209,7 +209,7 @@ func (r *RDB) GetTask(ctx context.Context, taskID string) (*task.Message, error)
 // Returns 0 if task ID already exists
 var enqueueTaskCmd = redis.NewScript(`
 if redis.call("EXISTS", KEYS[1]) == 1 then
-	return 0
+    return 0
 end
 redis.call("HSET", KEYS[1],
            "msg", ARGV[1],
@@ -240,7 +240,7 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 		PendingKey(msg.Queue),
 		ScheduledKey(msg.Queue),
 	}
-	argv := []interface{}{
+	argv := []any{
 		encoded,
 		msg.ID,
 		r.clock.Now().UnixMilli(),
@@ -283,7 +283,7 @@ func (r *RDB) DequeueTask(ctx context.Context, qname string) (*task.Message, err
 		PendingKey(qname),
 		RunningKey(qname),
 	}
-	argv := []interface{}{
+	argv := []any{
 		TaskKeyPrefix(qname),
 	}
 	encoded, err := dequeueTaskCmd.Run(ctx, r.client, keys, argv...).Result()
@@ -300,7 +300,7 @@ func (r *RDB) DequeueTask(ctx context.Context, qname string) (*task.Message, err
 
 	msg, err := task.DecodeMessage(encodedStr)
 	if err != nil {
-		logger.Error("Error decoding msg", "err", err)
+		logger.Error("Error decoding msg", "error", err)
 		return nil, err
 	}
 
@@ -323,14 +323,14 @@ func (r *RDB) DequeueTask(ctx context.Context, qname string) (*task.Message, err
 // Returns 0 if task ID does not exist
 var updateTaskCmd = redis.NewScript(`
 if redis.call("EXISTS", KEYS[1]) == 0 then
-	return 0
+    return 0
 end
 redis.call("HSET", KEYS[1],
            "msg", ARGV[1],
            "period", ARGV[2])
 redis.call("LREM", KEYS[2], 0, ARGV[4])
 if ARGV[3] == "RECURRING" then
-	redis.call("LPUSH", KEYS[2], ARGV[4])
+    redis.call("LPUSH", KEYS[2], ARGV[4])
 end
 return 1
 `)
@@ -345,7 +345,7 @@ func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
 		TaskKey(msg.Queue, msg.ID),
 		ScheduledKey(msg.Queue),
 	}
-	argv := []interface{}{
+	argv := []any{
 		encoded,
 		msg.Period.Milliseconds(),
 		msg.Type.String(),
@@ -373,7 +373,7 @@ redis.call("LREM", KEYS[2], 0, ARGV[1])
 redis.call("LREM", KEYS[3], 0, ARGV[1])
 redis.call("LREM", KEYS[4], 0, ARGV[1])
 if redis.call("DEL", KEYS[1]) == 0 then
-  return redis.error_reply("NOT FOUND")
+    return redis.error_reply("NOT FOUND")
 end
 return redis.status_reply("OK")
 `)
@@ -387,7 +387,7 @@ func (r *RDB) RemoveTask(ctx context.Context, taskID string) error {
 		RetryKey(task.QueueDefault),
 	}
 
-	argv := []interface{}{
+	argv := []any{
 		taskID,
 	}
 
@@ -401,7 +401,7 @@ func (r *RDB) RemoveTask(ctx context.Context, taskID string) error {
 // ARGV[1] -> task ID
 var scheduleTaskRetryCmd = redis.NewScript(`
 if redis.call("LREM", KEYS[1], 0, ARGV[1]) == 0 then
-  return redis.error_reply("NOT FOUND")
+    return redis.error_reply("NOT FOUND")
 end
 redis.call("LREM", KEYS[2], 0, ARGV[1])
 redis.call("LPUSH", KEYS[2], ARGV[1])
@@ -425,7 +425,7 @@ func (r *RDB) RequeueTaskRetry(ctx context.Context, msg *task.Message) error {
 // ARGV[1] -> task ID
 var requeueTaskFailedCmd = redis.NewScript(`
 if redis.call("LREM", KEYS[1], 0, ARGV[1]) == 0 then
-  return redis.error_reply("NOT FOUND")
+    return redis.error_reply("NOT FOUND")
 end
 redis.call("LPUSH", KEYS[2], ARGV[1])
 redis.call("HSET", KEYS[3], "status", "failed")
@@ -447,7 +447,7 @@ func (r *RDB) RequeueTaskFailed(ctx context.Context, msg *task.Message) error {
 // ARGV[1] -> task ID
 var markTaskAsCompleteCmd = redis.NewScript(`
 if redis.call("LREM", KEYS[1], 0, ARGV[1]) == 0 then
-  return redis.error_reply("NOT FOUND")
+    return redis.error_reply("NOT FOUND")
 end
 redis.call("HSET", KEYS[2], "status", "succeeded")
 return redis.status_reply("OK")`)
@@ -509,7 +509,7 @@ func (r *RDB) EnqueueScheduledTasks(ctx context.Context) error {
 		RetryKey(task.QueueDefault),
 	}
 
-	argv := []interface{}{
+	argv := []any{
 		r.clock.Now().UnixMilli(),
 	}
 	return r.runScript(ctx, enqueueScheduledTasksCmd, keys, argv)

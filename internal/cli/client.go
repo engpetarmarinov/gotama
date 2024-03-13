@@ -66,7 +66,7 @@ func GetTasks(offset int, limit int) ([]task.Response, error) {
 		return nil, errors.New(fmt.Sprintf("error received: code: %d, message: %s", rsp.Error.Code, rsp.Error.Message))
 	}
 
-	data, ok := rsp.Data.(map[string]interface{})
+	data, ok := rsp.Data.(map[string]any)
 	if !ok {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func GetTask(id string) ([]task.Response, error) {
 		return nil, errors.New(fmt.Sprintf("error received: code: %d, message: %s", rsp.Error.Code, rsp.Error.Message))
 	}
 
-	data, ok := rsp.Data.(map[string]interface{})
+	data, ok := rsp.Data.(map[string]any)
 	if !ok {
 		return nil, err
 	}

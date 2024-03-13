@@ -48,16 +48,16 @@ type Request struct {
 }
 
 type Response struct {
-	ID          string      `json:"ID"`
-	Status      string      `json:"status"`
-	Name        string      `json:"name"`
-	Type        string      `json:"type"`
-	Period      string      `json:"period"`
-	Payload     interface{} `json:"payload"`
-	Error       *string     `json:"error,omitempty"`
-	CreatedAt   string      `json:"created_at"`
-	CompletedAt *string     `json:"completed_at,omitempty"`
-	FailedAt    *string     `json:"failed_at,omitempty"`
+	ID          string  `json:"ID"`
+	Status      string  `json:"status"`
+	Name        string  `json:"name"`
+	Type        string  `json:"type"`
+	Period      string  `json:"period"`
+	Payload     any     `json:"payload"`
+	Error       *string `json:"error,omitempty"`
+	CreatedAt   string  `json:"created_at"`
+	CompletedAt *string `json:"completed_at,omitempty"`
+	FailedAt    *string `json:"failed_at,omitempty"`
 }
 
 type Status int
@@ -166,7 +166,7 @@ func NewMessageFromRequest(req *Request) (*Message, error) {
 }
 
 func NewResponseFromMessage(msg *Message) (*Response, error) {
-	var payload interface{}
+	var payload any
 	err := json.Unmarshal(msg.Payload, &payload)
 	if err != nil {
 		return nil, err

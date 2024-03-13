@@ -39,7 +39,7 @@ func (s *scheduler) Run() {
 				logger.Info("scheduler checking for scheduled tasks...")
 				err := s.broker.EnqueueScheduledTasks(s.ctx)
 				if err != nil {
-					logger.Error("scheduler error during enqueueing scheduled tasks", "err", err)
+					logger.Error("scheduler error during enqueueing scheduled tasks", "error", err)
 				}
 			}
 		}

@@ -9,7 +9,7 @@ import (
 type RedisConnOpt interface {
 	// MakeRedisClient returns a new redis client instance.
 	// Return value is intentionally opaque to hide the implementation detail of redis client.
-	MakeRedisClient() interface{}
+	MakeRedisClient() any
 }
 
 // RedisClientOpt is used to create a redis client that connects
@@ -63,7 +63,7 @@ type RedisClientOpt struct {
 	TLSConfig *tls.Config
 }
 
-func (opt RedisClientOpt) MakeRedisClient() interface{} {
+func (opt RedisClientOpt) MakeRedisClient() any {
 	return redis.NewClient(&redis.Options{
 		Network:      opt.Network,
 		Addr:         opt.Addr,

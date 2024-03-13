@@ -22,8 +22,7 @@ type FooProcessor struct {
 func (ep *FooProcessor) ProcessTask(ctx context.Context, t *task.Message) error {
 	var payload FooPayload
 	if err := json.Unmarshal(t.Payload, &payload); err != nil {
-		logger.Error("error unmarshalling foo payload", "err", t.Payload)
-		return fmt.Errorf("error unmarshalling foo payload %s", err.Error())
+		return fmt.Errorf("error unmarshalling foo payload %w", err)
 	}
 	logger.Info("Doing foo", "bar", payload.Bar, "baz", payload.Baz)
 	//simulate dummy load

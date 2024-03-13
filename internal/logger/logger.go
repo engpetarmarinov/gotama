@@ -3,6 +3,7 @@ package logger
 import (
 	"log/slog"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync/atomic"
 )
@@ -84,10 +85,31 @@ func initStdLogger(cfgOpt *ConfigOpt) {
 
 func initErrLogger() {
 	l := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.LevelError,
+		Level:       slog.LevelError,
+		ReplaceAttr: replaceAttr,
 	}))
 
 	errLogger.Store(&Logger{l})
+}
+
+func replaceAttr(_ []string, a slog.Attr) slog.Attr {
+	switch a.Value.Kind() {
+	case slog.KindAny:
+		switch v := a.Value.Any().(type) {
+		case error:
+			a.Value = fmtErr(v)
+		}
+	}
+
+	return a
+}
+
+func fmtErr(err error) slog.Value {
+	var groupValues []slog.Attr
+	groupValues = append(groupValues, slog.String("msg", err.Error()))
+	groupValues = append(groupValues, slog.Any("trace", debug.Stack()))
+
+	return slog.GroupValue(groupValues...)
 }
 
 func Init(cfgOpt *ConfigOpt) {

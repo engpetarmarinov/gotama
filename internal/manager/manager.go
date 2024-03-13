@@ -56,14 +56,14 @@ func (m *Manager) Run() {
 	m.scheduler.Run()
 }
 
-func writeSuccessResponse(w http.ResponseWriter, data interface{}) {
+func writeSuccessResponse(w http.ResponseWriter, data any) {
 	resp := base.Response{
 		Data:  data,
 		Error: nil,
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		logger.Error("error when trying to write success base.Response", "error", err.Error())
+		logger.Error("error when trying to write success base.Response", "error", err)
 		writeErrorResponse(w, http.StatusInternalServerError, "error when trying to write success base.Response")
 	}
 }
@@ -78,6 +78,6 @@ func writeErrorResponse(w http.ResponseWriter, code int, msg string) {
 
 	w.WriteHeader(code)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		logger.Error("error when trying to write error base.Response", "error", err.Error())
+		logger.Error("error when trying to write error base.Response", "error", err)
 	}
 }

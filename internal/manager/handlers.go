@@ -29,7 +29,7 @@ func getTasksHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 
 		totalTaskMsgs, taskMsgs, err := broker.GetAllTasks(context.Background(), offset, limit)
 		if err != nil {
-			logger.Error(err.Error())
+			logger.Error("Error", "error", err)
 			writeErrorResponse(w, http.StatusInternalServerError, "error getting all tasks")
 			return
 		}
@@ -38,7 +38,7 @@ func getTasksHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 		for _, taskMsg := range taskMsgs {
 			taskResp, err := task.NewResponseFromMessage(taskMsg)
 			if err != nil {
-				logger.Error(err.Error())
+				logger.Error("Error", "error", err)
 				writeErrorResponse(w, http.StatusInternalServerError, "error getting task response")
 				return
 			}
@@ -123,7 +123,7 @@ func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 
 		err = broker.EnqueueTask(context.Background(), taskMsg)
 		if err != nil {
-			logger.Error(err.Error())
+			logger.Error("Error", "error", err)
 			writeErrorResponse(w, http.StatusInternalServerError, "error enqueueing task")
 			return
 		}
@@ -197,7 +197,7 @@ func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		existingTaskMsg.Payload = newTaskMsg.Payload
 		err = broker.UpdateTask(context.Background(), existingTaskMsg)
 		if err != nil {
-			logger.Error(err.Error())
+			logger.Error("Error", "error", err)
 			writeErrorResponse(w, http.StatusInternalServerError, "error updating task")
 			return
 		}
@@ -230,7 +230,7 @@ func deleteTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http
 
 		err = broker.RemoveTask(context.Background(), existingTaskMsg.ID)
 		if err != nil {
-			logger.Error(err.Error())
+			logger.Error("Error", "error", err)
 			writeErrorResponse(w, http.StatusInternalServerError, "error removing task")
 			return
 		}

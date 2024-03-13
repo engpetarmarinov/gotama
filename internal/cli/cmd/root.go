@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -23,7 +24,7 @@ var rootCmd = &cobra.Command{
 
 func Run() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		logger.Error("Error", "error", err)
 		os.Exit(1)
 	}
 }
@@ -31,8 +32,8 @@ func Run() {
 func printTable(cols []string, printRows func(w io.Writer, tmpl string)) {
 	format := strings.Repeat("%v\t", len(cols)) + "\n"
 	tw := new(tabwriter.Writer).Init(os.Stdout, 0, 8, 2, ' ', 0)
-	var headers []interface{}
-	var seps []interface{}
+	var headers []any
+	var seps []any
 	for _, name := range cols {
 		headers = append(headers, name)
 		seps = append(seps, strings.Repeat("-", len(name)))
