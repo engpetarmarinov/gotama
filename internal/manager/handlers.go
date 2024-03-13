@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/engpetarmarinov/gotama/internal/broker"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/processors"
 	"github.com/engpetarmarinov/gotama/internal/task"
 	"io"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,7 +29,7 @@ func getTasksHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 
 		totalTaskMsgs, taskMsgs, err := broker.GetAllTasks(context.Background(), offset, limit)
 		if err != nil {
-			slog.Error(err.Error())
+			logger.Error(err.Error())
 			writeErrorResponse(w, http.StatusInternalServerError, "error getting all tasks")
 			return
 		}
@@ -38,7 +38,7 @@ func getTasksHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 		for _, taskMsg := range taskMsgs {
 			taskResp, err := task.NewResponseFromMessage(taskMsg)
 			if err != nil {
-				slog.Error(err.Error())
+				logger.Error(err.Error())
 				writeErrorResponse(w, http.StatusInternalServerError, "error getting task response")
 				return
 			}
@@ -66,14 +66,14 @@ func getTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		}
 		taskMsg, err := broker.GetTask(context.Background(), taskID)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
 
 		resp, err := task.NewResponseFromMessage(taskMsg)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusInternalServerError, "error getting task response")
 			return
 		}
@@ -86,7 +86,7 @@ func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, "error reading body")
 			return
 		}
@@ -94,14 +94,14 @@ func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 		var taskReq task.Request
 		err = json.Unmarshal(body, &taskReq)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, "error unmarshalling req")
 			return
 		}
 
 		taskMsg, err := task.NewMessageFromRequest(&taskReq)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -109,28 +109,28 @@ func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 		taskName, _ := task.GetName(taskMsg.Name)
 		processor, err := processors.ProcessorFactory(taskName)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, "no processor for this task name")
 			return
 		}
 
 		err = processor.ValidatePayload(taskMsg.Payload)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		err = broker.EnqueueTask(context.Background(), taskMsg)
 		if err != nil {
-			slog.Error(err.Error())
+			logger.Error(err.Error())
 			writeErrorResponse(w, http.StatusInternalServerError, "error enqueueing task")
 			return
 		}
 
 		resp, err := task.NewResponseFromMessage(taskMsg)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusInternalServerError, "error getting task response")
 			return
 		}
@@ -149,14 +149,14 @@ func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 
 		existingTaskMsg, err := broker.GetTask(context.Background(), taskID)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, "error reading body")
 			return
 		}
@@ -164,14 +164,14 @@ func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		var taskReq task.Request
 		err = json.Unmarshal(body, &taskReq)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, "error unmarshalling req")
 			return
 		}
 
 		newTaskMsg, err := task.NewMessageFromRequest(&taskReq)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -179,14 +179,14 @@ func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		taskName, _ := task.GetName(newTaskMsg.Name)
 		processor, err := processors.ProcessorFactory(taskName)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, "no processor for this task name")
 			return
 		}
 
 		err = processor.ValidatePayload(newTaskMsg.Payload)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -197,14 +197,14 @@ func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		existingTaskMsg.Payload = newTaskMsg.Payload
 		err = broker.UpdateTask(context.Background(), existingTaskMsg)
 		if err != nil {
-			slog.Error(err.Error())
+			logger.Error(err.Error())
 			writeErrorResponse(w, http.StatusInternalServerError, "error updating task")
 			return
 		}
 
 		resp, err := task.NewResponseFromMessage(existingTaskMsg)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusInternalServerError, "error getting task response")
 			return
 		}
@@ -223,21 +223,21 @@ func deleteTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http
 
 		existingTaskMsg, err := broker.GetTask(context.Background(), taskID)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusNotFound, err.Error())
 			return
 		}
 
 		err = broker.RemoveTask(context.Background(), existingTaskMsg.ID)
 		if err != nil {
-			slog.Error(err.Error())
+			logger.Error(err.Error())
 			writeErrorResponse(w, http.StatusInternalServerError, "error removing task")
 			return
 		}
 
 		resp, err := task.NewResponseFromMessage(existingTaskMsg)
 		if err != nil {
-			slog.Warn(err.Error())
+			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusInternalServerError, "error getting task response")
 			return
 		}

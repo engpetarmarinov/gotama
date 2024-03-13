@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"log/slog"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"net/http"
 	"time"
 )
@@ -14,7 +14,7 @@ func WithLogging(next http.HandlerFunc) http.HandlerFunc {
 		next.ServeHTTP(rw, r)
 		duration := time.Since(start)
 
-		slog.Info("Response",
+		logger.Info("Response",
 			"method", method,
 			"uri", uri,
 			"duration", duration)

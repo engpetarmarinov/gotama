@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/task"
-	"log/slog"
 	"math/rand"
 	"time"
 )
@@ -22,10 +22,10 @@ type FooProcessor struct {
 func (ep *FooProcessor) ProcessTask(ctx context.Context, t *task.Message) error {
 	var payload FooPayload
 	if err := json.Unmarshal(t.Payload, &payload); err != nil {
-		slog.Error("error unmarshalling foo payload", "err", t.Payload)
+		logger.Error("error unmarshalling foo payload", "err", t.Payload)
 		return fmt.Errorf("error unmarshalling foo payload %s", err.Error())
 	}
-	slog.Info("Doing foo", "bar", payload.Bar, "baz", payload.Baz)
+	logger.Info("Doing foo", "bar", payload.Bar, "baz", payload.Baz)
 	//simulate dummy load
 	tick := time.Tick(time.Second * 1)
 	for {

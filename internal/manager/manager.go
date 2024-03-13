@@ -7,8 +7,8 @@ import (
 	"github.com/engpetarmarinov/gotama/internal/base"
 	"github.com/engpetarmarinov/gotama/internal/broker"
 	"github.com/engpetarmarinov/gotama/internal/config"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"log"
-	"log/slog"
 	"net/http"
 )
 
@@ -28,7 +28,7 @@ func NewManager(broker broker.Broker, config config.API) *Manager {
 }
 
 func (m *Manager) Shutdown() error {
-	slog.Info("manager shutting down...")
+	logger.Info("manager shutting down...")
 	if err := m.scheduler.Shutdown(); err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (m *Manager) Run() {
 		}
 
 		m.server = &server
-		slog.Info("Listening on", "address", server.Addr)
+		logger.Info("Listening on", "address", server.Addr)
 		if err := server.ListenAndServe(); err != nil {
 			log.Fatal(err)
 		}
@@ -63,7 +63,7 @@ func writeSuccessResponse(w http.ResponseWriter, data interface{}) {
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		slog.Error("error when trying to write success base.Response", "error", err.Error())
+		logger.Error("error when trying to write success base.Response", "error", err.Error())
 		writeErrorResponse(w, http.StatusInternalServerError, "error when trying to write success base.Response")
 	}
 }
@@ -78,6 +78,6 @@ func writeErrorResponse(w http.ResponseWriter, code int, msg string) {
 
 	w.WriteHeader(code)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		slog.Error("error when trying to write error base.Response", "error", err.Error())
+		logger.Error("error when trying to write error base.Response", "error", err.Error())
 	}
 }

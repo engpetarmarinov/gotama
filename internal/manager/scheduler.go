@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/engpetarmarinov/gotama/internal/broker"
 	"github.com/engpetarmarinov/gotama/internal/config"
-	"log/slog"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"time"
 )
 
@@ -29,17 +29,17 @@ func (s *scheduler) Run() {
 	go func() {
 		duration := time.Second
 		tick := time.Tick(duration)
-		slog.Info("scheduler started", "period", duration.String())
+		logger.Info("scheduler started", "period", duration.String())
 		for {
 			select {
 			case <-s.ctx.Done():
-				slog.Info("scheduler goroutine received done")
+				logger.Info("scheduler goroutine received done")
 				return
 			case <-tick:
-				slog.Info("scheduler checking for scheduled tasks...")
+				logger.Info("scheduler checking for scheduled tasks...")
 				err := s.broker.EnqueueScheduledTasks(s.ctx)
 				if err != nil {
-					slog.Error("scheduler error during enqueueing scheduled tasks", "err", err)
+					logger.Error("scheduler error during enqueueing scheduled tasks", "err", err)
 				}
 			}
 		}
@@ -47,7 +47,7 @@ func (s *scheduler) Run() {
 }
 
 func (s *scheduler) Shutdown() error {
-	slog.Info("scheduler shutting down...")
+	logger.Info("scheduler shutting down...")
 	s.cancel()
 	return nil
 }

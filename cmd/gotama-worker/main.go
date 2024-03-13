@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/engpetarmarinov/gotama/internal/broker/rdb"
 	"github.com/engpetarmarinov/gotama/internal/config"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/timeutil"
 	"github.com/engpetarmarinov/gotama/internal/worker"
 	"github.com/redis/go-redis/v9"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,6 +15,7 @@ import (
 
 func main() {
 	cfg := config.NewConfig()
+	logger.Init(logger.NewConfigOpt().WithLevel(cfg.GetLogLevel()))
 	rco := rdb.RedisClientOpt{
 		Addr:     fmt.Sprintf("%s:%s", cfg.Get("REDIS_ADDR"), cfg.Get("REDIS_PORT")),
 		Password: cfg.Get("REDIS_PASSWORD"),
@@ -34,14 +35,14 @@ func main() {
 	signal.Notify(shutdown, syscall.SIGTERM, syscall.SIGINT)
 
 	<-shutdown
-	slog.Info("graceful shutdown...")
+	logger.Info("graceful shutdown...")
 	err := wrk.Shutdown()
 	if err != nil {
-		slog.Error("error shutting down worker", "error", err)
+		logger.Error("error shutting down worker", "error", err)
 	}
 
 	err = broker.Close()
 	if err != nil {
-		slog.Error("error closing broker", "error", err)
+		logger.Error("error closing broker", "error", err)
 	}
 }

@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"github.com/engpetarmarinov/gotama/internal/logger"
+	"os"
+)
 
 type API interface {
 	Get(key string) string
@@ -15,4 +18,9 @@ type Config struct {
 
 func (c *Config) Get(key string) string {
 	return os.Getenv(key)
+}
+
+func (c *Config) GetLogLevel() logger.Level {
+	logLevel := c.Get("LOG_LEVEL")
+	return logger.NewLogLevel(logLevel)
 }

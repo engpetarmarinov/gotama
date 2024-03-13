@@ -6,10 +6,10 @@ import (
 	"github.com/engpetarmarinov/gotama/internal/base"
 	"github.com/engpetarmarinov/gotama/internal/broker"
 	"github.com/engpetarmarinov/gotama/internal/config"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/processors"
 	"github.com/engpetarmarinov/gotama/internal/task"
 	"github.com/engpetarmarinov/gotama/internal/timeutil"
-	"log/slog"
 	"runtime/debug"
 	"strconv"
 	"sync"
@@ -54,14 +54,14 @@ func (w *Worker) Run() {
 			for {
 				select {
 				case <-ctx.Done():
-					slog.Info("worker goroutine received done")
+					logger.Info("worker goroutine received done")
 					return
 				case <-tick:
 					err := w.exec(context.Background())
 					if errors.Is(err, base.ErrorNoTasksInQueue) {
-						slog.Info("no tasks in queue")
+						logger.Info("no tasks in queue")
 					} else if err != nil {
-						slog.Error("worker exec error", "err", err.Error())
+						logger.Error("worker exec error", "err", err.Error())
 					}
 				}
 			}
@@ -71,10 +71,10 @@ func (w *Worker) Run() {
 }
 
 func (w *Worker) Shutdown() error {
-	slog.Info("worker shutting down...")
+	logger.Info("worker shutting down...")
 	w.cancel()
 	w.wg.Wait()
-	slog.Info("worker gracefully shut down all goroutines")
+	logger.Info("worker gracefully shut down all goroutines")
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (w *Worker) exec(ctx context.Context) error {
 	defer func() {
 		if r := recover(); r != nil {
 			errMsg := string(debug.Stack())
-			slog.Error("recovering from panic. stack trace:\n%s", errMsg)
+			logger.Error("recovering from panic. stack trace:\n%s", errMsg)
 		}
 	}()
 
@@ -146,19 +146,19 @@ func (w *Worker) handleProcessTaskError(ctx context.Context, msg *task.Message, 
 	msg.NumRetries = msg.NumRetries + 1
 	upErr := w.broker.UpdateTask(ctx, msg)
 	if upErr != nil {
-		slog.Error("error updating task when handling task error", "err", upErr)
+		logger.Error("error updating task when handling task error", "err", upErr)
 	}
 
 	if msg.NumRetries < maxRetry {
 		scheduleErr := w.broker.RequeueTaskRetry(ctx, msg)
 		if scheduleErr != nil {
-			slog.Error("error scheduling retry", "err", scheduleErr)
+			logger.Error("error scheduling retry", "err", scheduleErr)
 		}
 	} else {
 		//dead letter queue
 		requeueFailedErr := w.broker.RequeueTaskFailed(ctx, msg)
 		if requeueFailedErr != nil {
-			slog.Error("error scheduling retry", "err", requeueFailedErr)
+			logger.Error("error scheduling retry", "err", requeueFailedErr)
 		}
 	}
 }

@@ -5,15 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/engpetarmarinov/gotama/internal/base"
-	"github.com/engpetarmarinov/gotama/internal/broker"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/task"
 	"github.com/engpetarmarinov/gotama/internal/timeutil"
 	"github.com/redis/go-redis/v9"
-	"log/slog"
 )
 
 type RDB struct {
-	broker.Broker
 	client redis.UniversalClient
 	clock  timeutil.Clock
 }
@@ -92,12 +90,6 @@ func RetryKey(qname string) string {
 	return fmt.Sprintf("%sretry", QueueKeyPrefix(qname))
 }
 
-const (
-	KeyWorkers    = "workers"    // ZSET
-	KeySchedulers = "schedulers" // ZSET
-	KeyQueues     = "queues"     // SET
-)
-
 // getAllTasksCmd fetches all tasks with an offset and limit.
 //
 // Input:
@@ -144,7 +136,7 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 		offset,
 		limit,
 	}
-	slog.Info("Fetching all tasks", "offset", argv[0], "limit", argv[1])
+	logger.Info("Fetching all tasks", "offset", argv[0], "limit", argv[1])
 	var tasks []*task.Message
 	res, err := getAllTasksCmd.Run(ctx, r.client, keys, argv...).Result()
 	if err != nil {
@@ -172,7 +164,7 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 		}
 		msg, err := task.DecodeMessage(encodedStr)
 		if err != nil {
-			slog.Error("Error decoding msg", "err", err)
+			logger.Error("Error decoding msg", "err", err)
 			return 0, tasks, err
 		}
 		tasks = append(tasks, msg)
@@ -192,7 +184,7 @@ func (r *RDB) GetTask(ctx context.Context, taskID string) (*task.Message, error)
 	}
 	msg, err := task.DecodeMessage(encoded)
 	if err != nil {
-		slog.Error("Error decoding msg", "err", err)
+		logger.Error("Error decoding msg", "err", err)
 		return nil, err
 	}
 
@@ -232,6 +224,8 @@ end
 return 1
 `)
 
+const KeyQueues = "queues" // SET
+
 // EnqueueTask adds the given task to the pending list of the queue.
 func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 	encoded, err := task.EncodeMessage(msg)
@@ -253,7 +247,7 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 		msg.Period.Milliseconds(),
 		msg.Type.String(),
 	}
-	slog.Info("Adding task", "id", keys[0], "queue", keys[1])
+	logger.Info("Adding task", "id", keys[0], "queue", keys[1])
 	n, err := r.runScriptWithErrorCode(ctx, enqueueTaskCmd, keys, argv...)
 	if err != nil {
 		return err
@@ -306,7 +300,7 @@ func (r *RDB) DequeueTask(ctx context.Context, qname string) (*task.Message, err
 
 	msg, err := task.DecodeMessage(encodedStr)
 	if err != nil {
-		slog.Error("Error decoding msg", "err", err)
+		logger.Error("Error decoding msg", "err", err)
 		return nil, err
 	}
 
@@ -357,7 +351,7 @@ func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
 		msg.Type.String(),
 		msg.ID,
 	}
-	slog.Info("Updating task", "id", keys[0])
+	logger.Info("Updating task", "id", keys[0])
 	n, err := r.runScriptWithErrorCode(ctx, updateTaskCmd, keys, argv...)
 	if err != nil {
 		return err

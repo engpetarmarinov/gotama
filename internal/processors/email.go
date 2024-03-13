@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/task"
-	"log/slog"
 	"math/rand"
 	"time"
 )
@@ -23,10 +23,10 @@ type EmailProcessor struct {
 func (ep *EmailProcessor) ProcessTask(ctx context.Context, t *task.Message) error {
 	var payload EmailPayload
 	if err := json.Unmarshal(t.Payload, &payload); err != nil {
-		slog.Error("error unmarshalling email payload", "err", t.Payload)
+		logger.Error("error unmarshalling email payload", "err", t.Payload)
 		return fmt.Errorf("error unmarshalling email payload %s", err.Error())
 	}
-	slog.Info("Sending an email", "to", payload.To, "title", payload.Title, "body", payload.Body)
+	logger.Info("Sending an email", "to", payload.To, "title", payload.Title, "body", payload.Body)
 	//simulate dummy load
 	tick := time.Tick(time.Second * 2)
 	for {
@@ -34,7 +34,7 @@ func (ep *EmailProcessor) ProcessTask(ctx context.Context, t *task.Message) erro
 		case <-ctx.Done():
 			return errors.New("email task interrupted by done")
 		case <-tick:
-			slog.Info("Email sent", "to", payload.To, "title", payload.Title, "body", payload.Body)
+			logger.Info("Email sent", "to", payload.To, "title", payload.Title, "body", payload.Body)
 			return nil
 		default:
 			_ = rand.Int() * rand.Int()
