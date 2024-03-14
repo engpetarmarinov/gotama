@@ -2,7 +2,6 @@ package cli
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/engpetarmarinov/gotama/internal/base"
 	"github.com/engpetarmarinov/gotama/internal/task"
@@ -63,7 +62,7 @@ func GetTasks(offset int, limit int) ([]task.Response, error) {
 	}
 
 	if rsp.Error != nil {
-		return nil, errors.New(fmt.Sprintf("error received: code: %d, message: %s", rsp.Error.Code, rsp.Error.Message))
+		return nil, fmt.Errorf("error received: code: %d, message: %s", rsp.Error.Code, rsp.Error.Message)
 	}
 
 	data, ok := rsp.Data.(map[string]any)
@@ -93,7 +92,7 @@ func GetTask(id string) ([]task.Response, error) {
 	}
 
 	if rsp.Error != nil {
-		return nil, errors.New(fmt.Sprintf("error received: code: %d, message: %s", rsp.Error.Code, rsp.Error.Message))
+		return nil, fmt.Errorf("error received: code: %d, message: %s", rsp.Error.Code, rsp.Error.Message)
 	}
 
 	data, ok := rsp.Data.(map[string]any)

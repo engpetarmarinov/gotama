@@ -33,7 +33,7 @@ func (r *RDB) Close() error {
 
 func (r *RDB) runScript(ctx context.Context, script *redis.Script, keys []string, args ...any) error {
 	if err := script.Run(ctx, r.client, keys, args...).Err(); err != nil {
-		return errors.New(fmt.Sprintf("redis eval error: %v", err))
+		return fmt.Errorf("redis eval error: %v", err)
 	}
 	return nil
 }
@@ -41,11 +41,11 @@ func (r *RDB) runScript(ctx context.Context, script *redis.Script, keys []string
 func (r *RDB) runScriptWithErrorCode(ctx context.Context, script *redis.Script, keys []string, args ...any) (int64, error) {
 	res, err := script.Run(ctx, r.client, keys, args...).Result()
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("redis eval error: %v", err))
+		return 0, fmt.Errorf("redis eval error: %v", err)
 	}
 	n, ok := res.(int64)
 	if !ok {
-		return 0, errors.New(fmt.Sprintf("unexpected return value from Lua script: %v", res))
+		return 0, fmt.Errorf("unexpected return value from Lua script: %v", res)
 	}
 	return n, nil
 }
@@ -140,27 +140,27 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 	var tasks []*task.Message
 	res, err := getAllTasksCmd.Run(ctx, r.client, keys, argv...).Result()
 	if err != nil {
-		return 0, tasks, errors.New(fmt.Sprintf("redis eval error: %v", err))
+		return 0, tasks, fmt.Errorf("redis eval error: %v", err)
 	}
 	parsedRes, ok := res.([]any)
 	if !ok {
-		return 0, tasks, errors.New(fmt.Sprintf("unexpected return value from Lua script: %v", res))
+		return 0, tasks, fmt.Errorf("unexpected return value from Lua script: %v", res)
 	}
 
 	totalTasks, ok := parsedRes[0].(int64)
 	if !ok {
-		return 0, tasks, errors.New(fmt.Sprintf("unexpected return total_keys from Lua script: %v", parsedRes))
+		return 0, tasks, fmt.Errorf("unexpected return total_keys from Lua script: %v", parsedRes)
 	}
 
 	encodedMsgs, ok := parsedRes[1].([]any)
 	if !ok {
-		return 0, tasks, errors.New(fmt.Sprintf("unexpected return paginated_keys from Lua script: %v", parsedRes))
+		return 0, tasks, fmt.Errorf("unexpected return paginated_keys from Lua script: %v", parsedRes)
 	}
 
 	for _, encoded := range encodedMsgs {
 		encodedStr, ok := encoded.(string)
 		if !ok {
-			return 0, tasks, errors.New(fmt.Sprintf("error trying to cast %v to string", encoded))
+			return 0, tasks, fmt.Errorf("error trying to cast %v to string", encoded)
 		}
 		msg, err := task.DecodeMessage(encodedStr)
 		if err != nil {
@@ -230,7 +230,7 @@ const KeyQueues = "queues" // SET
 func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 	encoded, err := task.EncodeMessage(msg)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot encode message: %v", err))
+		return fmt.Errorf("cannot encode message: %v", err)
 	}
 	if err := r.client.SAdd(ctx, KeyQueues, msg.Queue).Err(); err != nil {
 		return err
@@ -290,12 +290,12 @@ func (r *RDB) DequeueTask(ctx context.Context, qname string) (*task.Message, err
 	if errors.Is(err, redis.Nil) {
 		return nil, base.ErrorNoTasksInQueue
 	} else if err != nil {
-		return nil, errors.New(fmt.Sprintf("redis eval error: %v", err))
+		return nil, fmt.Errorf("redis eval error: %v", err)
 	}
 
 	encodedStr, ok := encoded.(string)
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("error trying to cast %v to string", encoded))
+		return nil, fmt.Errorf("error trying to cast %v to string", encoded)
 	}
 
 	msg, err := task.DecodeMessage(encodedStr)
@@ -339,7 +339,7 @@ return 1
 func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
 	encoded, err := task.EncodeMessage(msg)
 	if err != nil {
-		return errors.New(fmt.Sprintf("cannot encode message: %v", err))
+		return fmt.Errorf("cannot encode message: %v", err)
 	}
 	keys := []string{
 		TaskKey(msg.Queue, msg.ID),

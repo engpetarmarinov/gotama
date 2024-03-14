@@ -2,7 +2,6 @@ package processors
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/engpetarmarinov/gotama/internal/task"
 )
@@ -19,6 +18,6 @@ func ProcessorFactory(name task.Name) (Processor, error) {
 	case task.NameFoo:
 		return NewFooProcessor(), nil
 	default:
-		return nil, errors.New(fmt.Sprintf("unknown processor type for %s", name.String()))
+		return nil, fmt.Errorf("unknown processor type for %s", name.String())
 	}
 }
