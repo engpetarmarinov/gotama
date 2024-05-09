@@ -92,3 +92,17 @@ Delete a task:
 ```bash
 curl --location --request DELETE 'http://localhost:8080/api/v1/tasks/11ef259c-8523-42e4-8568-9d167dbba9da'
 ```
+Send SMS:
+```bash
+curl --location 'http://localhost:8080/api/v1/tasks' \
+--header 'Content-Type: application/json' \
+--data '{
+    "name": "sms",
+    "type": "once",
+    "payload": {
+        "phone": "+{YOUR_PHONE_NUMBER}",
+        "text": "Gotama is sending you a message"
+    }
+}
+'
+```

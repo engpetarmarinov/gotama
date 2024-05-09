@@ -9,15 +9,19 @@ type Clock interface {
 	Now() time.Time
 }
 
-func NewRealClock() Clock { return &realTimeClock{} }
+func NewRealClock() Clock {
+	return &realTimeClock{}
+}
 
 type realTimeClock struct{}
 
-func (_ *realTimeClock) Now() time.Time { return time.Now() }
+func (_ *realTimeClock) Now() time.Time {
+	return time.Now()
+}
 
 type SimulatedClock struct {
 	mu sync.Mutex
-	t  time.Time // guarded by mu
+	t  time.Time
 }
 
 func NewSimulatedClock(t time.Time) *SimulatedClock {

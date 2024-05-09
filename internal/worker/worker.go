@@ -101,7 +101,7 @@ func (w *Worker) exec(ctx context.Context) error {
 		return err
 	}
 
-	processor, err := processors.ProcessorFactory(msgName)
+	processor, err := processors.ProcessorFactory(w.config, msgName)
 	if err != nil {
 		return err
 	}

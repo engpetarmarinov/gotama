@@ -13,6 +13,7 @@ type Name int
 const (
 	NameUnknown Name = iota
 	NameEmail
+	NameSMS
 	NameFoo
 )
 
@@ -20,6 +21,8 @@ func (n Name) String() string {
 	switch n {
 	case NameEmail:
 		return "EMAIL"
+	case NameSMS:
+		return "SMS"
 	case NameFoo:
 		return "FOO"
 	}
@@ -30,6 +33,8 @@ func GetName(name string) (Name, error) {
 	switch strings.ToUpper(name) {
 	case "EMAIL":
 		return NameEmail, nil
+	case "SMS":
+		return NameSMS, nil
 	case "FOO":
 		return NameFoo, nil
 	}

@@ -19,9 +19,9 @@ type FooPayload struct {
 type FooProcessor struct {
 }
 
-func (ep *FooProcessor) ProcessTask(ctx context.Context, t *task.Message) error {
+func (ep *FooProcessor) ProcessTask(ctx context.Context, msg *task.Message) error {
 	var payload FooPayload
-	if err := json.Unmarshal(t.Payload, &payload); err != nil {
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		return fmt.Errorf("error unmarshalling foo payload %w", err)
 	}
 	logger.Info("Doing foo", "bar", payload.Bar, "baz", payload.Baz)

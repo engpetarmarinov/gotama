@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/engpetarmarinov/gotama/internal/broker"
+	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/processors"
 	"github.com/engpetarmarinov/gotama/internal/task"
@@ -82,7 +83,7 @@ func getTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
+func postTaskHandler(config config.API, broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -107,7 +108,7 @@ func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 		}
 
 		taskName, _ := task.GetName(taskMsg.Name)
-		processor, err := processors.ProcessorFactory(taskName)
+		processor, err := processors.ProcessorFactory(config, taskName)
 		if err != nil {
 			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, "no processor for this task name")
@@ -139,7 +140,7 @@ func postTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 	}
 }
 
-func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
+func putTaskHandler(config config.API, broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskID := strings.ToLower(strings.TrimSpace(r.PathValue("id")))
 		if taskID == "" {
@@ -177,7 +178,7 @@ func putTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 		}
 
 		taskName, _ := task.GetName(newTaskMsg.Name)
-		processor, err := processors.ProcessorFactory(taskName)
+		processor, err := processors.ProcessorFactory(config, taskName)
 		if err != nil {
 			logger.Warn(err.Error())
 			writeErrorResponse(w, http.StatusBadRequest, "no processor for this task name")

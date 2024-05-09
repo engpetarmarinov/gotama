@@ -5,11 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ses"
+	"github.com/aws/aws-sdk-go-v2/service/ses/types"
+	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/task"
-	"math/rand"
-	"time"
+	"net/mail"
 )
+
+const charSet = "UTF-8"
 
 type EmailPayload struct {
 	To    string `json:"to"`
@@ -17,28 +23,59 @@ type EmailPayload struct {
 	Body  string `json:"body"`
 }
 
-type EmailProcessor struct {
+func NewEmailProcessor(config config.API) *EmailProcessor {
+	return &EmailProcessor{
+		config: config,
+	}
 }
 
-func (ep *EmailProcessor) ProcessTask(ctx context.Context, t *task.Message) error {
+type EmailProcessor struct {
+	config config.API
+}
+
+func (ep *EmailProcessor) ProcessTask(ctx context.Context, msg *task.Message) error {
 	var payload EmailPayload
-	if err := json.Unmarshal(t.Payload, &payload); err != nil {
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		return fmt.Errorf("error unmarshalling email payload %w", err)
 	}
-	logger.Info("Sending an email", "to", payload.To, "title", payload.Title, "body", payload.Body)
-	//simulate dummy load
-	tick := time.Tick(time.Second * 2)
-	for {
-		select {
-		case <-ctx.Done():
-			return errors.New("email task interrupted by done")
-		case <-tick:
-			logger.Info("Email sent", "to", payload.To, "title", payload.Title, "body", payload.Body)
-			return nil
-		default:
-			_ = rand.Int() * rand.Int()
-		}
+
+	region := ep.config.Get("AWS_REGION")
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region))
+	if err != nil {
+		return err
 	}
+
+	client := ses.NewFromConfig(awsCfg)
+	from := ep.config.Get("EMAIL_FROM")
+	input := &ses.SendEmailInput{
+		Destination: &types.Destination{
+			ToAddresses: []string{payload.To},
+		},
+		Message: &types.Message{
+			Subject: &types.Content{
+				Data:    aws.String(payload.Title),
+				Charset: aws.String(charSet),
+			},
+			Body: &types.Body{
+				Text: &types.Content{
+					Data:    aws.String(payload.Body),
+					Charset: aws.String(charSet),
+				},
+			},
+		},
+		Source: aws.String(from),
+	}
+
+	logger.Info("Sending an email", "to", payload.To, "title", payload.Title, "body", payload.Body)
+
+	output, err := client.SendEmail(ctx, input)
+	if err != nil {
+		return fmt.Errorf("error sending an email %w", err)
+	}
+
+	logger.Info("Sending an email", "to", payload.To, "title", payload.Title, "body", payload.Body, "id", *output.MessageId)
+
+	return nil
 }
 
 func (ep *EmailProcessor) ValidatePayload(payload []byte) error {
@@ -51,9 +88,10 @@ func (ep *EmailProcessor) ValidatePayload(payload []byte) error {
 		return errors.New("invalid payload: to, title and body are required fields")
 	}
 
-	return nil
-}
+	_, err := mail.ParseAddress(p.To)
+	if err != nil {
+		return errors.New("invalid payload: to must be a valid email address")
+	}
 
-func NewEmailProcessor() *EmailProcessor {
-	return &EmailProcessor{}
+	return nil
 }

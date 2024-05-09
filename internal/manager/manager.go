@@ -39,7 +39,7 @@ func (m *Manager) Shutdown() error {
 }
 
 func (m *Manager) Run() {
-	router := NewRouter().RegisterRoutes(m.broker)
+	router := NewRouter().RegisterRoutes(m.config, m.broker)
 	go func(mux http.Handler) {
 		server := http.Server{
 			Addr:    fmt.Sprintf(":%s", m.config.Get("MANAGER_PORT")),
