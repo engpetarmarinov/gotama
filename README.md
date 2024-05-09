@@ -20,6 +20,8 @@ Simple scalable system that can schedule and execute tasks.
 Prerequisites
 * docker and docker-compose
 
+Configure your environment variable within .evn/.local.env
+
 Start the manager service, the broker (redis) and the workers within docker
 ```bash
 docker-compose up --scale worker=3 -d
