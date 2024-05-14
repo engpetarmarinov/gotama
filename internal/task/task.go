@@ -14,6 +14,7 @@ const (
 	NameUnknown Name = iota
 	NameEmail
 	NameSMS
+	NameSlack
 	NameFoo
 )
 
@@ -23,6 +24,8 @@ func (n Name) String() string {
 		return "EMAIL"
 	case NameSMS:
 		return "SMS"
+	case NameSlack:
+		return "SLACK"
 	case NameFoo:
 		return "FOO"
 	}
@@ -35,6 +38,8 @@ func GetName(name string) (Name, error) {
 		return NameEmail, nil
 	case "SMS":
 		return NameSMS, nil
+	case "SLACK":
+		return NameSlack, nil
 	case "FOO":
 		return NameFoo, nil
 	}

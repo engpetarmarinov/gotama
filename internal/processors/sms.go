@@ -34,7 +34,7 @@ func NewSMSProcessor(config config.API) *SMSProcessor {
 func (sp *SMSProcessor) ProcessTask(ctx context.Context, msg *task.Message) error {
 	var p SMSPayload
 	if err := json.Unmarshal(msg.Payload, &p); err != nil {
-		return fmt.Errorf("error unmarshalling foo payload %w", err)
+		return fmt.Errorf("error unmarshalling sms payload %w", err)
 	}
 
 	region := sp.config.Get("AWS_REGION")

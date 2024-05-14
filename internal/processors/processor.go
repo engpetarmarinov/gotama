@@ -18,6 +18,8 @@ func ProcessorFactory(config config.API, name task.Name) (Processor, error) {
 		return NewEmailProcessor(config), nil
 	case task.NameSMS:
 		return NewSMSProcessor(config), nil
+	case task.NameSlack:
+		return NewSlackProcessor(config), nil
 	case task.NameFoo:
 		return NewFooProcessor(), nil
 	default:

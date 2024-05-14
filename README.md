@@ -108,3 +108,18 @@ curl --location 'http://localhost:8080/api/v1/tasks' \
 }
 '
 ```
+
+Send a Slack message to a channel:
+```bash
+curl --location 'http://localhost:8080/api/v1/tasks' \
+--header 'Content-Type: application/json' \
+--data '{
+    "name": "slack",
+    "type": "once",
+    "payload": {
+        "channel": "C0737FUEHEH",
+        "text": "Gotama is sending you a message"
+    }
+}
+'
+```
