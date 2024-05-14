@@ -52,7 +52,7 @@ func (sp *SlackProcessor) ValidatePayload(payload []byte) error {
 	}
 
 	if len(p.Channel) <= 0 || len(p.Text) <= 0 {
-		return errors.New("invalid payload: phone and text are required fields")
+		return errors.New("invalid payload: channel and text are required fields")
 	}
 
 	return nil
