@@ -50,44 +50,44 @@ func (r *RDB) runScriptWithErrorCode(ctx context.Context, script *redis.Script, 
 	return n, nil
 }
 
-// QueueKeyPrefix returns a prefix for all keys in the given queue.
-func QueueKeyPrefix(qname string) string {
+// queueKeyPrefix returns a prefix for all keys in the given queue.
+func queueKeyPrefix(qname string) string {
 	return fmt.Sprintf("gotama:%s:", qname)
 }
 
-// TaskKeyPrefix returns a prefix for task key.
-func TaskKeyPrefix(qname string) string {
-	return fmt.Sprintf("%st:", QueueKeyPrefix(qname))
+// taskKeyPrefix returns a prefix for task key.
+func taskKeyPrefix(qname string) string {
+	return fmt.Sprintf("%st:", queueKeyPrefix(qname))
 }
 
-// TaskKey returns a redis key for the given task message.
-func TaskKey(qname, id string) string {
-	return fmt.Sprintf("%s%s", TaskKeyPrefix(qname), id)
+// taskKey returns a redis key for the given task message.
+func taskKey(qname, id string) string {
+	return fmt.Sprintf("%s%s", taskKeyPrefix(qname), id)
 }
 
-// PendingKey returns a redis key for the given queue name.
-func PendingKey(qname string) string {
-	return fmt.Sprintf("%spending", QueueKeyPrefix(qname))
+// pendingKey returns a redis key for the given queue name.
+func pendingKey(qname string) string {
+	return fmt.Sprintf("%spending", queueKeyPrefix(qname))
 }
 
-// RunningKey returns a redis key for the given queue name.
-func RunningKey(qname string) string {
-	return fmt.Sprintf("%srunning", QueueKeyPrefix(qname))
+// runningKey returns a redis key for the given queue name.
+func runningKey(qname string) string {
+	return fmt.Sprintf("%srunning", queueKeyPrefix(qname))
 }
 
-// FailedKey returns a redis key for the given queue name.
-func FailedKey(qname string) string {
-	return fmt.Sprintf("%sfailed", QueueKeyPrefix(qname))
+// failedKey returns a redis key for the given queue name.
+func failedKey(qname string) string {
+	return fmt.Sprintf("%sfailed", queueKeyPrefix(qname))
 }
 
-// ScheduledKey returns a redis key for the scheduled tasks.
-func ScheduledKey(qname string) string {
-	return fmt.Sprintf("%sscheduled", QueueKeyPrefix(qname))
+// scheduledKey returns a redis key for the scheduled tasks.
+func scheduledKey(qname string) string {
+	return fmt.Sprintf("%sscheduled", queueKeyPrefix(qname))
 }
 
-// RetryKey returns a redis key for the retry tasks.
-func RetryKey(qname string) string {
-	return fmt.Sprintf("%sretry", QueueKeyPrefix(qname))
+// retryKey returns a redis key for the retry tasks.
+func retryKey(qname string) string {
+	return fmt.Sprintf("%sretry", queueKeyPrefix(qname))
 }
 
 // getAllTasksCmd fetches all tasks with an offset and limit.
@@ -130,7 +130,7 @@ return {total_keys, paginated_keys}
 // GetAllTasks fetches tasks with a given offset.
 func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []*task.Message, error) {
 	keys := []string{
-		TaskKey(task.QueueDefault, "*"),
+		taskKey(task.QueueDefault, "*"),
 	}
 	argv := []any{
 		offset,
@@ -175,7 +175,7 @@ func (r *RDB) GetAllTasks(ctx context.Context, offset int, limit int) (int64, []
 
 // GetTask fetches a task by its ID.
 func (r *RDB) GetTask(ctx context.Context, taskID string) (*task.Message, error) {
-	encoded, err := r.client.HGet(ctx, TaskKey(task.QueueDefault, taskID), "msg").Result()
+	encoded, err := r.client.HGet(ctx, taskKey(task.QueueDefault, taskID), "msg").Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, errors.New("not found")
@@ -236,9 +236,9 @@ func (r *RDB) EnqueueTask(ctx context.Context, msg *task.Message) error {
 		return err
 	}
 	keys := []string{
-		TaskKey(msg.Queue, msg.ID),
-		PendingKey(msg.Queue),
-		ScheduledKey(msg.Queue),
+		taskKey(msg.Queue, msg.ID),
+		pendingKey(msg.Queue),
+		scheduledKey(msg.Queue),
 	}
 	argv := []any{
 		encoded,
@@ -280,11 +280,11 @@ return nil`)
 
 func (r *RDB) DequeueTask(ctx context.Context, qname string) (*task.Message, error) {
 	keys := []string{
-		PendingKey(qname),
-		RunningKey(qname),
+		pendingKey(qname),
+		runningKey(qname),
 	}
 	argv := []any{
-		TaskKeyPrefix(qname),
+		taskKeyPrefix(qname),
 	}
 	encoded, err := dequeueTaskCmd.Run(ctx, r.client, keys, argv...).Result()
 	if errors.Is(err, redis.Nil) {
@@ -342,8 +342,8 @@ func (r *RDB) UpdateTask(ctx context.Context, msg *task.Message) error {
 		return fmt.Errorf("cannot encode message: %v", err)
 	}
 	keys := []string{
-		TaskKey(msg.Queue, msg.ID),
-		ScheduledKey(msg.Queue),
+		taskKey(msg.Queue, msg.ID),
+		scheduledKey(msg.Queue),
 	}
 	argv := []any{
 		encoded,
@@ -381,10 +381,10 @@ return redis.status_reply("OK")
 // RemoveTask deletes the task from all queues and the task itself
 func (r *RDB) RemoveTask(ctx context.Context, taskID string) error {
 	keys := []string{
-		TaskKey(task.QueueDefault, taskID),
-		PendingKey(task.QueueDefault),
-		ScheduledKey(task.QueueDefault),
-		RetryKey(task.QueueDefault),
+		taskKey(task.QueueDefault, taskID),
+		pendingKey(task.QueueDefault),
+		scheduledKey(task.QueueDefault),
+		retryKey(task.QueueDefault),
 	}
 
 	argv := []any{
@@ -411,9 +411,9 @@ return redis.status_reply("OK")`)
 // RequeueTaskRetry moves the task from running queue to the retry queue.
 func (r *RDB) RequeueTaskRetry(ctx context.Context, msg *task.Message) error {
 	keys := []string{
-		RunningKey(msg.Queue),
-		RetryKey(msg.Queue),
-		TaskKey(msg.Queue, msg.ID),
+		runningKey(msg.Queue),
+		retryKey(msg.Queue),
+		taskKey(msg.Queue, msg.ID),
 	}
 	return r.runScript(ctx, scheduleTaskRetryCmd, keys, msg.ID)
 }
@@ -434,9 +434,9 @@ return redis.status_reply("OK")`)
 // RequeueTaskFailed moves the task from running queue to the failed queue.
 func (r *RDB) RequeueTaskFailed(ctx context.Context, msg *task.Message) error {
 	keys := []string{
-		RunningKey(msg.Queue),
-		FailedKey(msg.Queue),
-		TaskKey(msg.Queue, msg.ID),
+		runningKey(msg.Queue),
+		failedKey(msg.Queue),
+		taskKey(msg.Queue, msg.ID),
 	}
 	return r.runScript(ctx, requeueTaskFailedCmd, keys, msg.ID)
 }
@@ -455,8 +455,8 @@ return redis.status_reply("OK")`)
 // MarkTaskAsComplete moves the task from running queue to the failed queue.
 func (r *RDB) MarkTaskAsComplete(ctx context.Context, msg *task.Message) error {
 	keys := []string{
-		RunningKey(msg.Queue),
-		TaskKey(msg.Queue, msg.ID),
+		runningKey(msg.Queue),
+		taskKey(msg.Queue, msg.ID),
 	}
 	return r.runScript(ctx, markTaskAsCompleteCmd, keys, msg.ID)
 }
@@ -503,10 +503,10 @@ return redis.status_reply("OK")`)
 // EnqueueScheduledTasks checks for scheduled tasks and pass them to the pending queue
 func (r *RDB) EnqueueScheduledTasks(ctx context.Context) error {
 	keys := []string{
-		ScheduledKey(task.QueueDefault),
-		PendingKey(task.QueueDefault),
-		TaskKey(task.QueueDefault, ""),
-		RetryKey(task.QueueDefault),
+		scheduledKey(task.QueueDefault),
+		pendingKey(task.QueueDefault),
+		taskKey(task.QueueDefault, ""),
+		retryKey(task.QueueDefault),
 	}
 
 	argv := []any{

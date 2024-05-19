@@ -28,7 +28,7 @@ func main() {
 
 	clock := timeutil.NewRealClock()
 	broker := rdb.NewRDB(client, clock)
-	wrk := worker.NewWorker(broker, cfg, clock)
+	wrk := worker.NewWorker(cfg, broker, clock)
 	wrk.Run()
 
 	shutdown := make(chan os.Signal, 1)

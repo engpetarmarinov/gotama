@@ -3,19 +3,20 @@ package manager
 import (
 	"context"
 	"github.com/engpetarmarinov/gotama/internal/broker"
+	"time"
+
 	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/logger"
-	"time"
 )
 
 type scheduler struct {
 	ctx    context.Context
-	broker broker.Broker
+	broker broker.SchedulerInterface
 	config config.API
 	cancel context.CancelFunc
 }
 
-func newScheduler(broker broker.Broker, config config.API) *scheduler {
+func newScheduler(broker broker.SchedulerInterface, config config.API) *scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &scheduler{
 		ctx:    ctx,

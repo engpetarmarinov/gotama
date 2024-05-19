@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/engpetarmarinov/gotama/internal/logger"
 	"os"
+
+	"github.com/engpetarmarinov/gotama/internal/logger"
 )
 
 type API interface {

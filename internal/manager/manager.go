@@ -4,22 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/engpetarmarinov/gotama/internal/base"
 	"github.com/engpetarmarinov/gotama/internal/broker"
-	"github.com/engpetarmarinov/gotama/internal/config"
-	"github.com/engpetarmarinov/gotama/internal/logger"
 	"log"
 	"net/http"
+
+	"github.com/engpetarmarinov/gotama/internal/base"
+	"github.com/engpetarmarinov/gotama/internal/config"
+	"github.com/engpetarmarinov/gotama/internal/logger"
 )
 
 type Manager struct {
 	server    *http.Server
 	scheduler base.Service
-	broker    broker.Broker
+	broker    broker.ManagerInterface
 	config    config.API
 }
 
-func NewManager(broker broker.Broker, config config.API) *Manager {
+func NewManager(broker broker.ManagerInterface, config config.API) *Manager {
 	return &Manager{
 		broker:    broker,
 		config:    config,

@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-func getTasksHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
+func getTasksHandler(broker broker.GetAllTasksInterface) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		params := r.URL.Query()
 		limitStr := params.Get("limit")
@@ -58,7 +58,7 @@ func getTasksHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.R
 	}
 }
 
-func getTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
+func getTaskHandler(broker broker.GetTaskInterface) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskID := strings.ToLower(strings.TrimSpace(r.PathValue("id")))
 		if taskID == "" {
@@ -83,7 +83,7 @@ func getTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func postTaskHandler(config config.API, broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
+func postTaskHandler(config config.API, broker broker.EnqueueTaskInterface) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -140,7 +140,7 @@ func postTaskHandler(config config.API, broker broker.Broker) func(w http.Respon
 	}
 }
 
-func putTaskHandler(config config.API, broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
+func putTaskHandler(config config.API, broker broker.GetUpdateTaskInterface) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskID := strings.ToLower(strings.TrimSpace(r.PathValue("id")))
 		if taskID == "" {
@@ -214,7 +214,7 @@ func putTaskHandler(config config.API, broker broker.Broker) func(w http.Respons
 	}
 }
 
-func deleteTaskHandler(broker broker.Broker) func(w http.ResponseWriter, r *http.Request) {
+func deleteTaskHandler(broker broker.GetDeleteTaskInterface) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskID := strings.ToLower(strings.TrimSpace(r.PathValue("id")))
 		if taskID == "" {

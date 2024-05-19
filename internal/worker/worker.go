@@ -19,13 +19,13 @@ var maxRetry = 3
 
 type Worker struct {
 	wg     *sync.WaitGroup
-	broker broker.Broker
+	broker broker.WorkerInterface
 	config config.API
 	clock  timeutil.Clock
 	cancel context.CancelFunc
 }
 
-func NewWorker(broker broker.Broker, config config.API, clock timeutil.Clock) *Worker {
+func NewWorker(config config.API, broker broker.WorkerInterface, clock timeutil.Clock) *Worker {
 	wg := &sync.WaitGroup{}
 	return &Worker{
 		wg:     wg,
@@ -56,7 +56,7 @@ func (w *Worker) Run() {
 					logger.Info("worker goroutine received done")
 					return
 				case <-tick:
-					err := w.exec(context.Background())
+					err := exec(context.Background(), w.config, w.broker, w.clock)
 					if errors.Is(err, base.ErrorNoTasksInQueue) {
 						logger.Info("no tasks in queue")
 					} else if err != nil {
@@ -77,7 +77,7 @@ func (w *Worker) Shutdown() error {
 	return nil
 }
 
-func (w *Worker) exec(ctx context.Context) error {
+func exec(ctx context.Context, config config.API, broker broker.WorkerInterface, clock timeutil.Clock) error {
 	//handle eventual panic in processors, we don't want the worker to stop
 	defer func() {
 		if r := recover(); r != nil {
@@ -85,7 +85,7 @@ func (w *Worker) exec(ctx context.Context) error {
 		}
 	}()
 
-	msg, err := w.broker.DequeueTask(ctx, task.QueueDefault)
+	msg, err := broker.DequeueTask(ctx, task.QueueDefault)
 	if err != nil {
 		return err
 	}
@@ -96,65 +96,65 @@ func (w *Worker) exec(ctx context.Context) error {
 	}
 
 	msg.Status = task.StatusRunning
-	err = w.broker.UpdateTask(ctx, msg)
+	err = broker.UpdateTask(ctx, msg)
 	if err != nil {
 		return err
 	}
 
-	processor, err := processors.ProcessorFactory(w.config, msgName)
+	processor, err := processors.ProcessorFactory(config, msgName)
 	if err != nil {
 		return err
 	}
 
-	taskDeadline, err := time.ParseDuration(w.config.Get("WORKER_TASK_DEADLINE"))
+	taskDeadline, err := time.ParseDuration(config.Get("WORKER_TASK_DEADLINE"))
 	if err != nil {
 		return err
 	}
 
-	taskCtx, taskCancel := context.WithDeadline(context.Background(), w.clock.Now().Add(taskDeadline))
+	taskCtx, taskCancel := context.WithDeadline(context.Background(), clock.Now().Add(taskDeadline))
 	defer taskCancel()
 	err = processor.ProcessTask(taskCtx, msg)
 	if err != nil {
-		w.handleProcessTaskError(ctx, msg, err)
+		handleProcessTaskError(ctx, broker, clock, msg, err)
 		return err
 	}
 
 	msg.Status = task.StatusSucceeded
-	now := w.clock.Now()
+	now := clock.Now()
 	msg.CompletedAt = &now
 	//Reset NumRetries for recurring tasks
 	if msg.Type == task.TypeRecurring {
 		msg.NumRetries = 0
 	}
 
-	err = w.broker.UpdateTask(ctx, msg)
+	err = broker.UpdateTask(ctx, msg)
 	if err != nil {
 		return err
 	}
 
-	return w.broker.MarkTaskAsComplete(ctx, msg)
+	return broker.MarkTaskAsComplete(ctx, msg)
 }
 
-func (w *Worker) handleProcessTaskError(ctx context.Context, msg *task.Message, err error) {
+func handleProcessTaskError(ctx context.Context, broker broker.WorkerInterface, clock timeutil.Clock, msg *task.Message, err error) {
 	msg.Status = task.StatusFailed
 	errStr := err.Error()
 	msg.Error = &errStr
-	now := w.clock.Now()
+	now := clock.Now()
 	msg.FailedAt = &now
 	msg.NumRetries = msg.NumRetries + 1
-	upErr := w.broker.UpdateTask(ctx, msg)
+	upErr := broker.UpdateTask(ctx, msg)
 	if upErr != nil {
 		logger.Error("error updating task when handling task error", "error", upErr)
 	}
 
 	if msg.NumRetries < maxRetry {
-		scheduleErr := w.broker.RequeueTaskRetry(ctx, msg)
+		scheduleErr := broker.RequeueTaskRetry(ctx, msg)
 		if scheduleErr != nil {
 			logger.Error("error scheduling retry", "error", scheduleErr)
 		}
 	} else {
 		//dead letter queue
-		requeueFailedErr := w.broker.RequeueTaskFailed(ctx, msg)
+		requeueFailedErr := broker.RequeueTaskFailed(ctx, msg)
 		if requeueFailedErr != nil {
 			logger.Error("error scheduling retry", "error", requeueFailedErr)
 		}
