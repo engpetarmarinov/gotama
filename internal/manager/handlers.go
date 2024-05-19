@@ -54,7 +54,7 @@ func getTasksHandler(broker broker.GetAllTasksInterface) func(w http.ResponseWri
 			Total: totalTaskMsgs,
 			Tasks: tasks,
 		}
-		writeSuccessResponse(w, resp)
+		writeSuccessResponse(w, http.StatusOK, resp)
 	}
 }
 
@@ -79,7 +79,7 @@ func getTaskHandler(broker broker.GetTaskInterface) func(w http.ResponseWriter, 
 			return
 		}
 
-		writeSuccessResponse(w, resp)
+		writeSuccessResponse(w, http.StatusOK, resp)
 	}
 }
 
@@ -136,7 +136,7 @@ func postTaskHandler(config config.API, broker broker.EnqueueTaskInterface) func
 			return
 		}
 
-		writeSuccessResponse(w, resp)
+		writeSuccessResponse(w, http.StatusCreated, resp)
 	}
 }
 
@@ -210,7 +210,7 @@ func putTaskHandler(config config.API, broker broker.GetUpdateTaskInterface) fun
 			return
 		}
 
-		writeSuccessResponse(w, resp)
+		writeSuccessResponse(w, http.StatusOK, resp)
 	}
 }
 
@@ -243,6 +243,6 @@ func deleteTaskHandler(broker broker.GetDeleteTaskInterface) func(w http.Respons
 			return
 		}
 
-		writeSuccessResponse(w, resp)
+		writeSuccessResponse(w, http.StatusOK, resp)
 	}
 }

@@ -1,0 +1,205 @@
+definitions:
+    ResponseError:
+        properties:
+            code:
+                format: int64
+                type: integer
+                x-go-name: Code
+            message:
+                type: string
+                x-go-name: Message
+        type: object
+        x-go-package: github.com/engpetarmarinov/gotama/internal/base
+    taskRequest:
+        properties:
+            name:
+                description: The name of the task
+                example: email
+                type: string
+                x-go-name: Name
+            payload:
+                description: The payload of the task containing task-specific data
+                type: object
+                x-go-name: Payload
+            period:
+                description: The period of the task, applicable if the task is recurring (e.g., 45m, 5s)
+                example: 45m
+                type: string
+                x-go-name: Period
+            type:
+                description: The type of the task (e.g., once, recurring)
+                example: once
+                type: string
+                x-go-name: Type
+        title: Request represents the payload for creating a new task.
+        type: object
+        x-go-name: Request
+        x-go-package: github.com/engpetarmarinov/gotama/internal/task
+    taskResponse:
+        properties:
+            ID:
+                description: The unique identifier of the task
+                example: 11ef259c-8523-42e4-8568-9d167dbba9da
+                type: string
+            completed_at:
+                description: The completion timestamp of the task, if completed
+                example: "2023-05-19T15:00:00Z"
+                type: string
+                x-go-name: CompletedAt
+            created_at:
+                description: The creation timestamp of the task
+                example: "2023-05-19T14:28:23Z"
+                type: string
+                x-go-name: CreatedAt
+            error:
+                description: Error message, if any
+                example: "null"
+                type: string
+                x-go-name: Error
+            failed_at:
+                description: The failure timestamp of the task, if failed
+                example: "2023-05-19T14:45:00Z"
+                type: string
+                x-go-name: FailedAt
+            name:
+                description: The name of the task
+                example: email
+                type: string
+                x-go-name: Name
+            payload:
+                description: The payload of the task containing task-specific data
+                x-go-name: Payload
+            period:
+                description: The period of the task, applicable if the task is recurring
+                example: 45m
+                type: string
+                x-go-name: Period
+            status:
+                description: The current status of the task
+                example: PENDING
+                type: string
+                x-go-name: Status
+            type:
+                description: The type of the task (e.g., once, recurring)
+                example: once
+                type: string
+                x-go-name: Type
+        title: Response represents the response object for a task.
+        type: object
+        x-go-name: Response
+        x-go-package: github.com/engpetarmarinov/gotama/internal/task
+paths:
+    /api/v1/tasks:
+        get:
+            description: Retrieves a list of all submitted tasks with pagination.
+            operationId: listTasks
+            parameters:
+                - description: Maximum number of tasks to return
+                  format: int32
+                  in: query
+                  name: limit
+                  type: integer
+                - description: Offset to start returning tasks
+                  format: int32
+                  in: query
+                  name: offset
+                  type: integer
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/Response'
+            summary: List tasks.
+            tags:
+                - tasks
+        post:
+            consumes:
+                - application/json
+            description: This will create a new task that can be executed immediately or periodically.
+            operationId: addTask
+            parameters:
+                - description: Task object
+                  in: body
+                  name: task
+                  required: true
+            produces:
+                - application/json
+            responses:
+                "201":
+                    $ref: '#/responses/Response'
+            summary: Add a new task.
+            tags:
+                - tasks
+    /api/v1/tasks/{taskId}:
+        delete:
+            description: Deletes an existing task by its ID.
+            operationId: deleteTask
+            parameters:
+                - description: ID of the task to delete
+                  in: path
+                  name: taskId
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/Response'
+                "404":
+                    $ref: '#/responses/Response'
+            summary: Delete a task.
+            tags:
+                - tasks
+        get:
+            description: Retrieves the details of an existing task by its ID.
+            operationId: getTask
+            parameters:
+                - description: ID of the task to retrieve
+                  in: path
+                  name: taskId
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/Response'
+                "404":
+                    $ref: '#/responses/Response'
+            summary: Get a task.
+            tags:
+                - tasks
+        put:
+            consumes:
+                - application/json
+            description: Updates the details of an existing task by its ID.
+            operationId: updateTask
+            parameters:
+                - description: ID of the task to update
+                  in: path
+                  name: taskId
+                  required: true
+                  type: string
+                - description: Updated task object
+                  in: body
+                  name: task
+                  required: true
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/Response'
+                "404":
+                    $ref: '#/responses/Response'
+            summary: Update a task.
+            tags:
+                - tasks
+responses:
+    Response:
+        description: Response represents the response contract
+        headers:
+            data: {}
+            error: {}
+        schema:
+            $ref: '#/definitions/ResponseError'
+swagger: "2.0"

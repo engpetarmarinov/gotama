@@ -50,24 +50,66 @@ const (
 	QueueDefault string = "default"
 )
 
+// Request represents the payload for creating a new task.
+// swagger:model taskRequest
 type Request struct {
-	Name    string          `json:"name"`
-	Type    string          `json:"type"`
-	Period  string          `json:"period"`
+	// The name of the task
+	// example: email
+	Name string `json:"name"`
+
+	// The type of the task (e.g., once, recurring)
+	// example: once
+	Type string `json:"type"`
+
+	// The period of the task, applicable if the task is recurring (e.g., 45m, 5s)
+	// example: 45m
+	Period string `json:"period"`
+
+	// The payload of the task containing task-specific data
 	Payload json.RawMessage `json:"payload"`
 }
 
+// Response represents the response object for a task.
+// swagger:model taskResponse
 type Response struct {
-	ID          string  `json:"ID"`
-	Status      string  `json:"status"`
-	Name        string  `json:"name"`
-	Type        string  `json:"type"`
-	Period      string  `json:"period"`
-	Payload     any     `json:"payload"`
-	Error       *string `json:"error,omitempty"`
-	CreatedAt   string  `json:"created_at"`
+	// The unique identifier of the task
+	// example: 11ef259c-8523-42e4-8568-9d167dbba9da
+	ID string `json:"ID"`
+
+	// The current status of the task
+	// example: PENDING
+	Status string `json:"status"`
+
+	// The name of the task
+	// example: email
+	Name string `json:"name"`
+
+	// The type of the task (e.g., once, recurring)
+	// example: once
+	Type string `json:"type"`
+
+	// The period of the task, applicable if the task is recurring
+	// example: 45m
+	Period string `json:"period"`
+
+	// The payload of the task containing task-specific data
+	Payload any `json:"payload"`
+
+	// Error message, if any
+	// example: null
+	Error *string `json:"error,omitempty"`
+
+	// The creation timestamp of the task
+	// example: 2023-05-19T14:28:23Z
+	CreatedAt string `json:"created_at"`
+
+	// The completion timestamp of the task, if completed
+	// example: 2023-05-19T15:00:00Z
 	CompletedAt *string `json:"completed_at,omitempty"`
-	FailedAt    *string `json:"failed_at,omitempty"`
+
+	// The failure timestamp of the task, if failed
+	// example: 2023-05-19T14:45:00Z
+	FailedAt *string `json:"failed_at,omitempty"`
 }
 
 type Status int
