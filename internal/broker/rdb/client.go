@@ -6,12 +6,6 @@ import (
 	"time"
 )
 
-type RedisConnOpt interface {
-	// MakeRedisClient returns a new redis client instance.
-	// Return value is intentionally opaque to hide the implementation detail of redis client.
-	MakeRedisClient() any
-}
-
 // RedisClientOpt is used to create a redis client that connects
 // to a redis server directly.
 type RedisClientOpt struct {

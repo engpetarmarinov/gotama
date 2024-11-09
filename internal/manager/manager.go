@@ -21,9 +21,14 @@ type Broker interface {
 	GetUpdateTaskBroker
 }
 
+type Service interface {
+	Run()
+	Shutdown() error
+}
+
 type Manager struct {
 	server    *http.Server
-	scheduler base.Service
+	scheduler Service
 	broker    Broker
 	config    config.API
 }
