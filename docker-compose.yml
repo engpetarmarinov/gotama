@@ -28,7 +28,7 @@ services:
       #TODO: left for debugging from outside of the network
       - "6379:6379"
     volumes:
-      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf
       - broker:/data
     command:
       - /bin/sh

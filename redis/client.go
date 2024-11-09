@@ -1,4 +1,4 @@
-package rdb
+package redis
 
 import (
 	"crypto/tls"
@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// RedisClientOpt is used to create a redis client that connects
+// ClientOpt is used to create a redis client that connects
 // to a redis server directly.
-type RedisClientOpt struct {
+type ClientOpt struct {
 	// Network type to use, either tcp or unix.
 	// Default is tcp.
 	Network string
@@ -57,7 +57,8 @@ type RedisClientOpt struct {
 	TLSConfig *tls.Config
 }
 
-func (opt RedisClientOpt) MakeRedisClient() any {
+// NewRedisClient returns a client to the Redis Server specified by ClientOpt
+func (opt ClientOpt) NewRedisClient() redis.UniversalClient {
 	return redis.NewClient(&redis.Options{
 		Network:      opt.Network,
 		Addr:         opt.Addr,

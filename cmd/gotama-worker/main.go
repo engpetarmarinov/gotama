@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/engpetarmarinov/gotama/internal/broker/rdb"
 	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/timeutil"
 	"github.com/engpetarmarinov/gotama/internal/worker"
+	rdb "github.com/engpetarmarinov/gotama/redis"
 	"github.com/redis/go-redis/v9"
 	"os"
 	"os/signal"
@@ -16,12 +16,12 @@ import (
 func main() {
 	cfg := config.NewConfig()
 	logger.Init(logger.NewConfigOpt().WithLevel(cfg.GetLogLevel()))
-	rco := rdb.RedisClientOpt{
+	rco := rdb.ClientOpt{
 		Addr:     fmt.Sprintf("%s:%s", cfg.Get("REDIS_ADDR"), cfg.Get("REDIS_PORT")),
 		Password: cfg.Get("REDIS_PASSWORD"),
 	}
 
-	client, ok := rco.MakeRedisClient().(redis.UniversalClient)
+	client, ok := rco.NewRedisClient().(redis.UniversalClient)
 	if !ok {
 		panic("panic casting to redis client")
 	}
