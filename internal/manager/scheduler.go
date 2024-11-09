@@ -2,21 +2,24 @@ package manager
 
 import (
 	"context"
-	"github.com/engpetarmarinov/gotama/internal/broker"
 	"time"
 
 	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/logger"
 )
 
+type SchedulerBroker interface {
+	EnqueueScheduledTasks(ctx context.Context) error
+}
+
 type scheduler struct {
 	ctx    context.Context
-	broker broker.SchedulerInterface
+	broker SchedulerBroker
 	config config.API
 	cancel context.CancelFunc
 }
 
-func newScheduler(broker broker.SchedulerInterface, config config.API) *scheduler {
+func newScheduler(broker SchedulerBroker, config config.API) *scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &scheduler{
 		ctx:    ctx,

@@ -1,7 +1,6 @@
 package manager
 
 import (
-	"github.com/engpetarmarinov/gotama/internal/broker"
 	"github.com/engpetarmarinov/gotama/internal/config"
 	mw "github.com/engpetarmarinov/gotama/internal/middleware"
 	"net/http"
@@ -17,7 +16,7 @@ func NewRouter() *Router {
 	}
 }
 
-func (r *Router) RegisterRoutes(config config.API, broker broker.ManagerInterface) http.Handler {
+func (r *Router) RegisterRoutes(config config.API, broker Broker) http.Handler {
 	// swagger:route GET /api/v1/tasks tasks listTasks
 	//
 	// List tasks.

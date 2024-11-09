@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/engpetarmarinov/gotama/internal/broker"
 	"log"
 	"net/http"
 
@@ -13,14 +12,23 @@ import (
 	"github.com/engpetarmarinov/gotama/internal/logger"
 )
 
+type Broker interface {
+	GetTaskBroker
+	GetAllTasksBroker
+	GetDeleteTaskBroker
+	EnqueueTaskBroker
+	SchedulerBroker
+	GetUpdateTaskBroker
+}
+
 type Manager struct {
 	server    *http.Server
 	scheduler base.Service
-	broker    broker.ManagerInterface
+	broker    Broker
 	config    config.API
 }
 
-func NewManager(broker broker.ManagerInterface, config config.API) *Manager {
+func NewManager(broker Broker, config config.API) *Manager {
 	return &Manager{
 		broker:    broker,
 		config:    config,

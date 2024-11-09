@@ -3,7 +3,6 @@ package manager
 import (
 	"context"
 	"encoding/json"
-	"github.com/engpetarmarinov/gotama/internal/broker"
 	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/processors"
@@ -14,7 +13,29 @@ import (
 	"strings"
 )
 
-func getTasksHandler(broker broker.GetAllTasksInterface) func(w http.ResponseWriter, r *http.Request) {
+type GetAllTasksBroker interface {
+	GetAllTasks(ctx context.Context, offset int, limit int) (int64, []*task.Message, error)
+}
+
+type GetTaskBroker interface {
+	GetTask(ctx context.Context, taskID string) (*task.Message, error)
+}
+
+type GetUpdateTaskBroker interface {
+	GetTaskBroker
+	UpdateTask(ctx context.Context, msg *task.Message) error
+}
+
+type GetDeleteTaskBroker interface {
+	GetTaskBroker
+	RemoveTask(ctx context.Context, taskID string) error
+}
+
+type EnqueueTaskBroker interface {
+	EnqueueTask(ctx context.Context, msg *task.Message) error
+}
+
+func getTasksHandler(broker GetAllTasksBroker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		params := r.URL.Query()
 		limitStr := params.Get("limit")
@@ -58,7 +79,7 @@ func getTasksHandler(broker broker.GetAllTasksInterface) func(w http.ResponseWri
 	}
 }
 
-func getTaskHandler(broker broker.GetTaskInterface) func(w http.ResponseWriter, r *http.Request) {
+func getTaskHandler(broker GetTaskBroker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskID := strings.ToLower(strings.TrimSpace(r.PathValue("id")))
 		if taskID == "" {
@@ -83,7 +104,7 @@ func getTaskHandler(broker broker.GetTaskInterface) func(w http.ResponseWriter, 
 	}
 }
 
-func postTaskHandler(config config.API, broker broker.EnqueueTaskInterface) func(w http.ResponseWriter, r *http.Request) {
+func postTaskHandler(config config.API, broker EnqueueTaskBroker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -140,7 +161,7 @@ func postTaskHandler(config config.API, broker broker.EnqueueTaskInterface) func
 	}
 }
 
-func putTaskHandler(config config.API, broker broker.GetUpdateTaskInterface) func(w http.ResponseWriter, r *http.Request) {
+func putTaskHandler(config config.API, broker GetUpdateTaskBroker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskID := strings.ToLower(strings.TrimSpace(r.PathValue("id")))
 		if taskID == "" {
@@ -214,7 +235,7 @@ func putTaskHandler(config config.API, broker broker.GetUpdateTaskInterface) fun
 	}
 }
 
-func deleteTaskHandler(broker broker.GetDeleteTaskInterface) func(w http.ResponseWriter, r *http.Request) {
+func deleteTaskHandler(broker GetDeleteTaskBroker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskID := strings.ToLower(strings.TrimSpace(r.PathValue("id")))
 		if taskID == "" {

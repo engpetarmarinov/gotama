@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/engpetarmarinov/gotama/internal/base"
-	"github.com/engpetarmarinov/gotama/internal/broker"
 	"github.com/engpetarmarinov/gotama/internal/config"
 	"github.com/engpetarmarinov/gotama/internal/logger"
 	"github.com/engpetarmarinov/gotama/internal/processors"
@@ -17,15 +16,23 @@ import (
 
 var maxRetry = 3
 
+type Broker interface {
+	UpdateTask(ctx context.Context, msg *task.Message) error
+	DequeueTask(ctx context.Context, qname string) (*task.Message, error)
+	MarkTaskAsComplete(ctx context.Context, msg *task.Message) error
+	RequeueTaskFailed(ctx context.Context, msg *task.Message) error
+	RequeueTaskRetry(ctx context.Context, msg *task.Message) error
+}
+
 type Worker struct {
 	wg     *sync.WaitGroup
-	broker broker.WorkerInterface
+	broker Broker
 	config config.API
 	clock  timeutil.Clock
 	cancel context.CancelFunc
 }
 
-func NewWorker(config config.API, broker broker.WorkerInterface, clock timeutil.Clock) *Worker {
+func NewWorker(config config.API, broker Broker, clock timeutil.Clock) *Worker {
 	wg := &sync.WaitGroup{}
 	return &Worker{
 		wg:     wg,
@@ -77,7 +84,7 @@ func (w *Worker) Shutdown() error {
 	return nil
 }
 
-func exec(ctx context.Context, config config.API, broker broker.WorkerInterface, clock timeutil.Clock) error {
+func exec(ctx context.Context, config config.API, broker Broker, clock timeutil.Clock) error {
 	//handle eventual panic in processors, we don't want the worker to stop
 	defer func() {
 		if r := recover(); r != nil {
@@ -135,7 +142,7 @@ func exec(ctx context.Context, config config.API, broker broker.WorkerInterface,
 	return broker.MarkTaskAsComplete(ctx, msg)
 }
 
-func handleProcessTaskError(ctx context.Context, broker broker.WorkerInterface, clock timeutil.Clock, msg *task.Message, err error) {
+func handleProcessTaskError(ctx context.Context, broker Broker, clock timeutil.Clock, msg *task.Message, err error) {
 	msg.Status = task.StatusFailed
 	errStr := err.Error()
 	msg.Error = &errStr
